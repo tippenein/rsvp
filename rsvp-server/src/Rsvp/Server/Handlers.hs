@@ -12,8 +12,10 @@ import Control.Monad.Except (ExceptT(..))
 import Control.Monad.Log (Severity, logInfo)
 import Servant (ServantErr, Server, (:<|>)(..), (:~>)(..), enter)
 import Text.PrettyPrint.Leijen.Text (Doc, Pretty, text)
+import Database.Persist
 
 import Rsvp.API
+import Rsvp.Server.Models
 import qualified Rsvp.Server.Logging as Log
 
 -- | rsvp API implementation.
@@ -60,8 +62,9 @@ rsvps = do
   logInfo (text "showing all Rsvps")
   pure (RsvpResponse [])
 
-createEvent :: Event -> Handler Doc EventResponse
+createEvent :: Event -> Handler Doc EventCreateResponse
 createEvent event = do
   putText $ show event
-  logInfo (text "creating new event ")
-  pure (EventResponse [])
+  -- event_id <- runDb $ insert event
+  logInfo (text "created new event ")
+  pure (EventCreateResponse (Right "success"))

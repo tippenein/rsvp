@@ -30,6 +30,7 @@ library
     , http-media
     , neat-interpolation
     , servant
+    , text
   exposed-modules:
       Rsvp.API
       Rsvp.API.Internal

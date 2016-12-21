@@ -24,6 +24,7 @@ library:
     - http-media
     - neat-interpolation
     - servant
+    - text
 
 tests:
   rsvp-api-tests:

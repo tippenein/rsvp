@@ -10,8 +10,9 @@ module Rsvp.API where
 import Protolude
 
 import Data.Aeson
-       (FromJSON(..), ToJSON(..), Value(..), object, (.=), (.:))
-import Data.Aeson.Types (typeMismatch)
+import Data.Aeson.Types
+import qualified Data.Text as T
+import qualified Prelude
 import qualified NeatInterpolation as NI
 import Servant.API ((:>), ReqBody,(:<|>)(..), Get, Post, JSON, MimeRender(..))
 
@@ -29,15 +30,15 @@ type ListEvents = "events" :> Get '[JSON] EventResponse
 type CreateEvent =
   "events"
   :> ReqBody '[JSON] Event
-  :> Post '[JSON] EventResponse
+  :> Post '[JSON] EventCreateResponse
 
 api :: Proxy API
 api = Proxy
 
 data User = User
-  { _userId :: Int
-  , _userFirstName :: Text
-  , _userLastName :: Text
+  { _user_id :: Int
+  , _user_first_name :: Text
+  , _user_last_name :: Text
   } deriving (Eq, Show, Generic)
 
 data ContactInfo
@@ -58,18 +59,57 @@ data Event = Event
   , _event_name:: Text
   } deriving (Eq, Show, Generic)
 
-instance FromJSON User
-instance ToJSON User
+-- json -----------------------------------------------
+instance FromJSON User where
+  parseJSON = genericParseJSON defaultOptions {
+                fieldLabelModifier = dropIdentifier }
+instance ToJSON User where
+  toJSON = genericToJSON defaultOptions {
+             fieldLabelModifier = dropIdentifier }
 
-instance FromJSON Rsvp
-instance ToJSON Rsvp
+instance FromJSON Rsvp where
+  parseJSON = genericParseJSON defaultOptions {
+                fieldLabelModifier = dropIdentifier }
+instance ToJSON Rsvp where
+  toJSON = genericToJSON defaultOptions {
+             fieldLabelModifier = dropIdentifier }
 
-instance FromJSON Event
-instance ToJSON Event
+instance FromJSON Event where
+  parseJSON = genericParseJSON defaultOptions {
+                fieldLabelModifier = dropIdentifier }
+instance ToJSON Event where
+  toJSON = genericToJSON defaultOptions {
+             fieldLabelModifier = dropIdentifier }
 
 instance FromJSON ContactInfo
 instance ToJSON ContactInfo
 
+dropIdentifier :: Prelude.String -> Prelude.String
+dropIdentifier = T.unpack . T.intercalate "_" . drop 1 . T.splitOn "_" . T.pack
+
+data RootPage =
+  RootPage
+
+instance MimeRender HTML RootPage where
+  mimeRender _ _ =
+    toS
+      [NI.text|
+         <!doctype html>
+         <html>
+         <head><title>RSVP</title></head>
+         <body>
+         <h1>RSVP</h1>
+         <ul>
+         <li><a href="/users">users</a></li>
+         <li><a href="/events">events</a></li>
+         <li><a href="/rsvps">events</a></li>
+         <li><a href="/metrics"><code>/metrics</code></a></li>
+         </ul>
+         </body>
+         <html>
+         |]
+
+-- serializers ------------------------------
 newtype UserResponse =
   UserResponse [User]
   deriving (Eq, Show, Generic)
@@ -103,26 +143,24 @@ instance FromJSON EventResponse where
 instance ToJSON EventResponse where
   toJSON (EventResponse events) = object ["events" .= toJSON events]
 
-data RootPage =
-  RootPage
 
-instance MimeRender HTML RootPage where
-  mimeRender _ _ =
-    toS
-      [NI.text|
-         <!doctype html>
-         <html>
-         <head><title>rsvp</title></head>
-         <body>
-         <h1>rsvp</h1>
-         <ul>
-         <li><a href="/users">users</a></li>
-         <li><a href="/events">events</a></li>
-         <li><a href="/metrics"><code>/metrics</code></a></li>
-         </ul>
-         <p>
-         Source code at <a href="https://github.com/tippenein/rsvp">https://github.com/tippenein/rsvp/</a>
-         </p>
-         </body>
-         <html>
-         |]
+-- instance ToJSON (Entity Event) where
+--   toJSON = genericToJSON defaultOptions
+  -- toJSON (Entity pid (Event )) = object
+  --   [ "id" .= pid
+  --   , "name" .= _event_name
+  --   ]
+
+type Status = Either Text Text
+
+newtype EventCreateResponse =
+  EventCreateResponse Status
+  deriving (Eq, Show, Generic)
+
+instance FromJSON EventCreateResponse where
+  parseJSON (Object v) = EventCreateResponse <$> v .: "status"
+  parseJSON x = typeMismatch "Events" x
+
+
+instance ToJSON EventCreateResponse where
+  toJSON (EventCreateResponse event) = object ["event" .= toJSON event]
