@@ -22,7 +22,7 @@ library
   hs-source-dirs:
       src
   default-extensions: NoImplicitPrelude OverloadedStrings RecordWildCards
-  ghc-options: -Wall -Werror
+  ghc-options: -Wall
   build-depends:
       base >= 4.9 && < 5
     , protolude
@@ -63,7 +63,7 @@ executable rsvp
   hs-source-dirs:
       cmd
   default-extensions: NoImplicitPrelude OverloadedStrings RecordWildCards
-  ghc-options: -Wall -Werror
+  ghc-options: -Wall
   build-depends:
       base >= 4.9 && < 5
     , protolude
@@ -76,7 +76,7 @@ test-suite rsvp-server-tests
   hs-source-dirs:
       tests
   default-extensions: NoImplicitPrelude OverloadedStrings RecordWildCards
-  ghc-options: -Wall -Werror
+  ghc-options: -Wall
   build-depends:
       base >= 4.9 && < 5
     , protolude
@@ -84,6 +84,7 @@ test-suite rsvp-server-tests
     , rsvp-server
     , logging-effect
     , QuickCheck
+    , quickcheck-instances
     , servant-quickcheck
     , tasty
     , tasty-hspec
