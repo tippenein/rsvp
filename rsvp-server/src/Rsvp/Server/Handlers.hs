@@ -6,10 +6,6 @@ module Rsvp.Server.Handlers
   ( server
   ) where
 
--- XXX: jml doesn't like the name "Handlers" for this, and isn't sure that it
--- should be in a submodule of Project.Server. Perhaps the code in
--- Project.Server (which is command-line processing, setting up logs &
--- monitoring, starting the HTTP server) should be in a different module.
 import Protolude hiding (Handler)
 
 import Control.Monad.Except (ExceptT(..))
@@ -17,14 +13,19 @@ import Control.Monad.Log (Severity, logInfo)
 import Servant (ServantErr, Server, (:<|>)(..), (:~>)(..), enter)
 import Text.PrettyPrint.Leijen.Text (Doc, Pretty, text)
 
-import Rsvp.API (API, RootPage(..), User(..), Users(..))
+import Rsvp.API
 import qualified Rsvp.Server.Logging as Log
 
 -- | rsvp API implementation.
 server :: Severity -> Server API
 server logLevel = enter (toHandler logLevel) handlers
   where
-    handlers = pure RootPage :<|> users
+    handlers =
+      pure RootPage :<|>
+      users :<|>
+      rsvps :<|>
+      events :<|>
+      createEvent
 
 -- | Our custom handler type.
 type Handler msg = ExceptT ServantErr (Log.LogM msg IO)
@@ -43,8 +44,24 @@ toHandler logLevel = Nat toHandler'
       => Handler msg a -> ExceptT ServantErr IO a
     toHandler' = ExceptT . Log.withLogging logLevel . runExceptT
 
--- | Example endpoint.
-users :: Handler Doc Users
+users :: Handler Doc UserResponse
 users = do
   logInfo (text "Example of logging")
-  pure (Users [User 1 "Isaac" "Newton", User 2 "Albert" "Einstein"])
+  pure (UserResponse [User 1 "Isaac" "Newton", User 2 "Albert" "Einstein"])
+
+events :: Handler Doc EventResponse
+events = do
+  logInfo (text "showing all events")
+  pure (EventResponse [Event 1 (Phone "1112223434") "event brawl", Event 2 (Email "derp@derp.com") "whatever event"])
+
+
+rsvps :: Handler Doc RsvpResponse
+rsvps = do
+  logInfo (text "showing all Rsvps")
+  pure (RsvpResponse [])
+
+createEvent :: Event -> Handler Doc EventResponse
+createEvent event = do
+  putText $ show event
+  logInfo (text "creating new event ")
+  pure (EventResponse [])
