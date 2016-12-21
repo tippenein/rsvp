@@ -18,9 +18,6 @@ clean:
 docs:
 	stack haddock
 
-format:
-	./scripts/hindent-everything
-
 lint:
 	hlint -q .
 
