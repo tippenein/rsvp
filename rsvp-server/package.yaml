@@ -1,0 +1,60 @@
+name: rsvp-server
+version: 0.1.0
+synopsis: rsvp event system
+description: Please see README.md
+maintainer: tippenein <tippenein@gmail.com>
+license: Apache
+github: tippenein/rsvp
+category: Web
+
+ghc-options: -Wall -Werror
+default-extensions:
+  - NoImplicitPrelude
+  - OverloadedStrings
+  - RecordWildCards
+
+dependencies:
+  - base >= 4.9 && < 5
+  - protolude
+
+library:
+  source-dirs: src
+  dependencies:
+    - rsvp-api
+    - aeson
+    - bytestring
+    - exceptions
+    - http-media
+    - http-types
+    - logging-effect
+    - mtl
+    - optparse-applicative
+    - prometheus-client
+    - prometheus-metrics-ghc
+    - servant-server
+    - time
+    - wai
+    - wai-extra
+    - wai-middleware-prometheus
+    - warp
+    - wl-pprint-text
+
+executables:
+  rsvp:
+    main: Main.hs
+    source-dirs: cmd
+    dependencies:
+      - rsvp-server
+
+tests:
+  rsvp-server-tests:
+    main: Main.hs
+    source-dirs: tests
+    dependencies:
+      - rsvp-api
+      - rsvp-server
+      - logging-effect
+      - QuickCheck
+      - servant-quickcheck
+      - tasty
+      - tasty-hspec
