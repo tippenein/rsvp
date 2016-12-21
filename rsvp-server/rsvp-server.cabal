@@ -1,0 +1,90 @@
+-- This file has been generated from package.yaml by hpack version 0.15.0.
+--
+-- see: https://github.com/sol/hpack
+
+name:           rsvp-server
+version:        0.1.0
+synopsis:       rsvp event system
+description:    Please see README.md
+category:       Web
+homepage:       https://github.com/tippenein/rsvp#readme
+bug-reports:    https://github.com/tippenein/rsvp/issues
+maintainer:     tippenein <tippenein@gmail.com>
+license:        Apache
+build-type:     Simple
+cabal-version:  >= 1.10
+
+source-repository head
+  type: git
+  location: https://github.com/tippenein/rsvp
+
+library
+  hs-source-dirs:
+      src
+  default-extensions: NoImplicitPrelude OverloadedStrings RecordWildCards
+  ghc-options: -Wall -Werror
+  build-depends:
+      base >= 4.9 && < 5
+    , protolude
+    , rsvp-api
+    , aeson
+    , bytestring
+    , exceptions
+    , http-media
+    , http-types
+    , logging-effect
+    , monad-logger
+    , mtl
+    , optparse-applicative
+    , prometheus-client
+    , prometheus-metrics-ghc
+    , persistent
+    , persistent-postgresql
+    , persistent-template
+    , servant-server
+    , time
+    , transformers
+    , wai
+    , wai-extra
+    , wai-middleware-prometheus
+    , warp
+    , wl-pprint-text
+  exposed-modules:
+      Rsvp.Server
+      Rsvp.Server.Config
+      Rsvp.Server.Handlers
+      Rsvp.Server.Instrument
+      Rsvp.Server.Logging
+      Rsvp.Server.Models
+  default-language: Haskell2010
+
+executable rsvp
+  main-is: Main.hs
+  hs-source-dirs:
+      cmd
+  default-extensions: NoImplicitPrelude OverloadedStrings RecordWildCards
+  ghc-options: -Wall -Werror
+  build-depends:
+      base >= 4.9 && < 5
+    , protolude
+    , rsvp-server
+  default-language: Haskell2010
+
+test-suite rsvp-server-tests
+  type: exitcode-stdio-1.0
+  main-is: Main.hs
+  hs-source-dirs:
+      tests
+  default-extensions: NoImplicitPrelude OverloadedStrings RecordWildCards
+  ghc-options: -Wall -Werror
+  build-depends:
+      base >= 4.9 && < 5
+    , protolude
+    , rsvp-api
+    , rsvp-server
+    , logging-effect
+    , QuickCheck
+    , servant-quickcheck
+    , tasty
+    , tasty-hspec
+  default-language: Haskell2010

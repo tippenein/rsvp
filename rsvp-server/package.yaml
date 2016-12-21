@@ -27,12 +27,17 @@ library:
     - http-media
     - http-types
     - logging-effect
+    - monad-logger
     - mtl
     - optparse-applicative
     - prometheus-client
     - prometheus-metrics-ghc
+    - persistent
+    - persistent-postgresql
+    - persistent-template
     - servant-server
     - time
+    - transformers
     - wai
     - wai-extra
     - wai-middleware-prometheus
