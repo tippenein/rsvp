@@ -66,13 +66,6 @@ makePool Test =
 makePool Development =
     runStdoutLoggingT (createPostgresqlPool (connStr "") (envPool Development))
 makePool Production = do
-    -- This function makes heavy use of the 'MaybeT' monad transformer, which
-    -- might be confusing if you're not familiar with it. It allows us to
-    -- combine the effects from 'IO' and the effect of 'Maybe' into a single
-    -- "big effect", so that when we bind out of @MaybeT IO a@, we get an
-    -- @a@. If we just had @IO (Maybe a)@, then binding out of the IO would
-    -- give us a @Maybe a@, which would make the code quite a bit more
-    -- verbose.
     pool <- runMaybeT $ do
         let keys = [ "host="
                    , "port="
@@ -90,12 +83,8 @@ makePool Production = do
         let prodStr = mconcat . zipWith (<>) keys $ BS.pack <$> envVars
         runStdoutLoggingT $ createPostgresqlPool prodStr (envPool Production)
     case pool of
-        -- If we don't have a correct database configuration, we can't
-        -- handle that in the program, so we throw an IO exception. This is
-        -- one example where using an exception is preferable to 'Maybe' or
-        -- 'Either'.
-         Nothing -> panic "Database Configuration not present in environment."
-         Just a -> return a
+      Nothing -> panic "Database Configuration not present in environment."
+      Just a -> return a
 
 -- | The number of pools to use for a given environment.
 envPool :: Environment -> Int
@@ -106,4 +95,4 @@ envPool Production = 8
 -- | A basic 'ConnectionString' for local/test development. Pass in either
 -- @""@ for 'Development' or @"test"@ for 'Test'.
 connStr :: BS.ByteString -> ConnectionString
-connStr sfx = "host=localhost dbname=perservant" <> sfx <> " user=test password=test port=5432"
+connStr sfx = "host=localhost dbname=rsvp" <> sfx <> " user=test password=test port=5432"

@@ -22,13 +22,26 @@ import           Database.Persist.TH  (mkMigrate, mkPersist, persistLowerCase,
 
 import Protolude
 
+import           Rsvp.API
 import           Rsvp.Server.Config
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
-User json
+UserDb sql=users
     name Text
     email Text
-    deriving Show
+    deriving Eq Show
+
+RsvpDb sql=rsvps
+    event_id EventDbId
+    name Text
+    contact Text
+    deriving Eq Show
+
+EventDb sql=events
+    name Text
+    creator_id UserDbId
+    contact Text
+    deriving Eq Show
 |]
 
 doMigrations :: SqlPersistT IO ()

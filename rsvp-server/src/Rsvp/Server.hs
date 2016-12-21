@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 -- | Serve the API as an HTTP server.
 module Rsvp.Server
@@ -9,6 +10,7 @@ module Rsvp.Server
 
 import Protolude
 
+import           System.Environment          (lookupEnv)
 import Control.Monad.Log (Severity(..))
 import qualified Data.List as List
 import GHC.Stats (getGCStatsEnabled)
@@ -23,11 +25,13 @@ import qualified Prometheus as Prom
 import qualified Prometheus.Metric.GHC as Prom
 import Servant (serve)
 import Text.PrettyPrint.Leijen.Text (int, text)
-
+import Database.Persist.Sql (runSqlPool)
 import Rsvp.API (api)
+import Rsvp.Server.Config (makePool, Environment(..))
 import Rsvp.Server.Handlers (server)
 import Rsvp.Server.Instrument
        (defaultPrometheusSettings, prometheus, requestDuration)
+import Rsvp.Server.Models (doMigrations)
 import qualified Rsvp.Server.Logging as Log
 
 -- | Configuration for the application.
@@ -82,12 +86,16 @@ options = info (helper <*> parser) description
       fold
         [ fullDesc
         , progDesc "rsvp event system"
-        , header "rsvp - TODO fill this in"
+        , header "rsvp - yup"
         ]
 
 runApp :: Config -> IO ()
 runApp config@Config {..} = do
   requests <- Prom.registerIO requestDuration
+  env <- lookupSetting "ENV" Development
+  pool <- makePool env
+  runSqlPool doMigrations pool
+
   when enableGhcMetrics $
     do statsEnabled <- getGCStatsEnabled
        unless statsEnabled $
@@ -119,3 +127,11 @@ warpSettings Config {..} =
     (setPort port defaultSettings)
   where
     printPort = Log.log Informational (text "Listening on :" `mappend` int port)
+
+lookupSetting env def = do
+    maybeValue <- lookupEnv env
+    case maybeValue of
+        Nothing ->
+            return def
+        Just str ->
+            maybe (panic "failed to read from Env") return (readMaybe str)
