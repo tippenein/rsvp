@@ -22,24 +22,23 @@ import           Database.Persist.TH  (mkMigrate, mkPersist, persistLowerCase,
 
 import Protolude
 
-import           Rsvp.API
 import           Rsvp.Server.Config
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
-UserDb sql=users
+User json sql=users
     name Text
     email Text
     deriving Eq Show
 
-RsvpDb sql=rsvps
-    event_id EventDbId
+Rsvp json sql=rsvps
+    event_id EventId
     name Text
     contact Text
     deriving Eq Show
 
-EventDb sql=events
+Event json sql=events
+    creator_id UserId
     name Text
-    creator_id UserDbId
     contact Text
     deriving Eq Show
 |]

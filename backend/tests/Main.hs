@@ -4,6 +4,8 @@ module Main
 
 import Protolude
 
+import Protolude
+
 import Control.Monad.Log (Severity(..))
 import Test.QuickCheck
 import Test.QuickCheck.Instances ()
@@ -13,8 +15,11 @@ import Servant.QuickCheck
         unauthorizedContainsWWWAuthenticate, withServantServer)
 import Test.Tasty (defaultMain, TestTree, testGroup)
 import Test.Tasty.Hspec (Spec, it, testSpec)
+import Database.Persist.Types (toSqlKey)
 
-import Rsvp.API (api, ContactInfo(..), Event(..), Rsvp(..), User(..))
+import Rsvp.API (api)
+import Rsvp.Response
+import Rsvp.Server.Models
 import Rsvp.Server (server)
 
 main :: IO ()
@@ -23,18 +28,18 @@ main = defaultMain =<< tests
 tests :: IO TestTree
 tests = do
   specs <- testSpec "quickcheck tests" spec
-  pure $ testGroup "Rsvp.Server" [specs]
+  pure $ testGroup "Rsvp.Backend" [specs]
 
-instance Arbitrary ContactInfo where
-  arbitrary = Phone <$> arbitrary
+-- instance Arbitrary ContactInfo where
+--   arbitrary = Phone <$> arbitrary
+
+key = toSqlKey $ getPositive <$> arbitrary
 
 instance Arbitrary Event where
-  arbitrary = Event <$> pos <*> arbitrary <*> arbitrary
-     where pos = getPositive <$> arbitrary
+  arbitrary = Event <$> key <*> arbitrary <*> arbitrary
 
 instance Arbitrary Rsvp where
-  arbitrary = Rsvp <$> pos <*> arbitrary <*> arbitrary
-     where pos = getPositive <$> arbitrary
+  arbitrary = Rsvp <$> key <*> arbitrary <*> arbitrary
 
 instance Arbitrary User where
   arbitrary = User <$> arbitrary <*> arbitrary <*> arbitrary
@@ -53,3 +58,4 @@ spec =
         notLongerThan 100000000 <%>
         unauthorizedContainsWWWAuthenticate <%>
         mempty)
+

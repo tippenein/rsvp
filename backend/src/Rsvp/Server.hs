@@ -9,13 +9,14 @@ module Rsvp.Server
   ) where
 
 import Protolude
+import qualified Prelude
 
 import           System.Environment          (lookupEnv)
 import Control.Monad.Log (Severity(..))
 import qualified Data.List as List
 import GHC.Stats (getGCStatsEnabled)
 import Network.Wai.Handler.Warp
-       (Port, Settings, defaultSettings, runSettings, setBeforeMainLoop,
+        (Port, Settings, defaultSettings, runSettings, setBeforeMainLoop,
         setPort)
 import qualified Network.Wai.Middleware.RequestLogger as RL
 import Options.Applicative
@@ -26,6 +27,7 @@ import qualified Prometheus.Metric.GHC as Prom
 import Servant (serve)
 import Text.PrettyPrint.Leijen.Text (int, text)
 import Database.Persist.Sql (runSqlPool)
+
 import Rsvp.API (api)
 import Rsvp.Server.Config (makePool, Environment(..))
 import Rsvp.Server.Handlers (server)
@@ -35,7 +37,7 @@ import Rsvp.Server.Models (doMigrations)
 import qualified Rsvp.Server.Logging as Log
 
 -- | Configuration for the application.
-data Config = Config
+data CliConfig = CliConfig
   { port :: Port
   , accessLogs :: AccessLogs
   , logLevel :: Severity
@@ -53,11 +55,11 @@ data AccessLogs
 startApp :: IO ()
 startApp = runApp =<< execParser options
 
-options :: ParserInfo Config
+options :: ParserInfo CliConfig
 options = info (helper <*> parser) description
   where
     parser =
-      Config <$>
+      CliConfig <$>
       option auto (fold [long "port", metavar "PORT", help "Port to listen on"]) <*>
       option
         (eitherReader parseAccessLogs)
@@ -89,8 +91,8 @@ options = info (helper <*> parser) description
         , header "rsvp - yup"
         ]
 
-runApp :: Config -> IO ()
-runApp config@Config {..} = do
+runApp :: CliConfig -> IO ()
+runApp config@CliConfig {..} = do
   requests <- Prom.registerIO requestDuration
   env <- lookupSetting "ENV" Development
   pool <- makePool env
@@ -120,14 +122,15 @@ runApp config@Config {..} = do
 -- | Generate warp settings from config
 --
 -- Serve from a port and print out where we're serving from.
-warpSettings :: Config -> Settings
-warpSettings Config {..} =
+warpSettings :: CliConfig -> Settings
+warpSettings CliConfig {..} =
   setBeforeMainLoop
     (Log.withLogging logLevel printPort)
     (setPort port defaultSettings)
   where
     printPort = Log.log Informational (text "Listening on :" `mappend` int port)
 
+lookupSetting :: Read b => Prelude.String -> b -> IO b
 lookupSetting env def = do
     maybeValue <- lookupEnv env
     case maybeValue of

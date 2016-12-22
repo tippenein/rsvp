@@ -23,6 +23,9 @@ library:
     - aeson
     - http-media
     - neat-interpolation
+    - unordered-containers
+    - persistent
+    - rsvp-server
     - servant
     - text
 

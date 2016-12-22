@@ -1,4 +1,4 @@
-name: rsvp-server
+name: backend
 version: 0.1.0
 synopsis: rsvp event system
 description: Please see README.md
@@ -7,7 +7,7 @@ license: Apache
 github: tippenein/rsvp
 category: Web
 
-ghc-options: -Wall
+ghc-options: -Wall -Werror
 default-extensions:
   - NoImplicitPrelude
   - OverloadedStrings
@@ -20,7 +20,6 @@ dependencies:
 library:
   source-dirs: src
   dependencies:
-    - rsvp-api
     - aeson
     - bytestring
     - exceptions
@@ -35,7 +34,9 @@ library:
     - persistent
     - persistent-postgresql
     - persistent-template
+    - servant
     - servant-server
+    - text
     - time
     - transformers
     - wai
@@ -43,21 +44,22 @@ library:
     - wai-middleware-prometheus
     - warp
     - wl-pprint-text
+    - http-media
+    - neat-interpolation
 
 executables:
   rsvp:
     main: Main.hs
     source-dirs: cmd
     dependencies:
-      - rsvp-server
+      - backend
 
 tests:
-  rsvp-server-tests:
+  rsvp-api-tests:
     main: Main.hs
     source-dirs: tests
     dependencies:
-      - rsvp-api
-      - rsvp-server
+      - backend
       - logging-effect
       - QuickCheck
       - quickcheck-instances
