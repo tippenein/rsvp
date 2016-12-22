@@ -6,22 +6,25 @@ module Rsvp.Server.Handlers
   ( server
   ) where
 
-import Protolude hiding (Handler, get)
+import           Protolude hiding (Handler, get)
 
-import Control.Monad.Except (ExceptT(..))
-import Control.Monad.Log (Severity, logInfo)
-import Servant (ServantErr, Server, (:<|>)(..), (:~>)(..), enter)
-import Text.PrettyPrint.Leijen.Text (Doc, Pretty, text)
-import Database.Persist.Sql (toSqlKey)
+import           Control.Monad.Except (ExceptT(..))
+import           Control.Monad.Log (logInfo)
+import           Control.Monad.Reader (ReaderT, runReaderT)
+import           Database.Persist
+import           Database.Persist.Sql (toSqlKey)
+import           Servant (ServantErr, Server, (:<|>)(..), (:~>)(..), enter)
+import           Text.PrettyPrint.Leijen.Text (Doc, Pretty, text)
 
-import Rsvp.API
-import Rsvp.Response
-import Rsvp.Server.Models
+import qualified Rsvp.Server.Config as Config
+import           Rsvp.API
+import           Rsvp.Response
+import           Rsvp.Server.Models
 import qualified Rsvp.Server.Logging as Log
 
 -- | rsvp API implementation.
-server :: Severity -> Server API
-server logLevel = enter (toHandler logLevel) handlers
+server :: Config.Config -> Server API
+server config = enter (toHandler config) handlers
   where
     handlers =
       pure RootPage :<|>
@@ -33,7 +36,8 @@ server logLevel = enter (toHandler logLevel) handlers
       -- files
 
 -- | Our custom handler type.
-type Handler msg = ExceptT ServantErr (Log.LogM msg IO)
+type Handler msg = ReaderT Config.Config (ExceptT ServantErr (Log.LogM msg IO))
+
 
 -- | Translate our custom monad into a Servant handler.
 --
@@ -41,13 +45,18 @@ type Handler msg = ExceptT ServantErr (Log.LogM msg IO)
 -- for the details.
 toHandler
   :: Pretty msg
-  => Severity -> (Handler msg :~> ExceptT ServantErr IO)
-toHandler logLevel = Nat toHandler'
-  where
-    toHandler'
-      :: Pretty msg
-      => Handler msg a -> ExceptT ServantErr IO a
-    toHandler' = ExceptT . Log.withLogging logLevel . runExceptT
+  => Config.Config -> Handler msg :~> ExceptT ServantErr IO
+toHandler config = Nat (convertToHandler config)
+
+convertToHandler
+  :: Pretty msg
+  => Config.Config
+  -> Handler msg a
+  -> ExceptT ServantErr IO a
+convertToHandler cfg = ExceptT . Log.withLogging (Config.logLevel cfg) . runExceptT . flip runReaderT cfg
+
+-- convertApp :: Config.Config -> Config.App :~> ExceptT ServantErr IO
+-- convertApp cfg = Nat (flip runReaderT cfg . Config.runApp)
 
 users :: Handler Doc UserResponse
 users = do
@@ -62,17 +71,20 @@ getEvent id = do
   -- record <- runDb $ get (toSqlKey id)
   -- case record of
   --   Nothing -> throwError err404
-  --   Just a -> pure a
+  --   Just a -> entityVal a
 
 events :: Maybe Text -> Handler Doc EventResponse
-events mname = case mname of
-  Nothing -> do
-    logInfo (text "showing all events")
-    -- pure (EventResponse [Event 1 (Phone "1112223434") "event brawl", Event 2 (Email "derp@derp.com") "whatever event"])
-    pure (EventResponse [Event (toSqlKey 1) "1112223434" "event brawl", Event (toSqlKey 2) "derp@derp.com" "whatever event"])
-  Just name -> do
-    logInfo (text $ "showing " <> show name)
-    pure (EventResponse [Event (toSqlKey 1) "1112223434" "event brawl"])
+events _ = do
+  es <- runDb $ selectList [] []
+  pure $ EventResponse $ fmap entityVal es
+  -- case mname of
+  -- Nothing -> do
+  --   logInfo (text "showing all events")
+  --   -- pure (EventResponse [Event 1 (Phone "1112223434") "event brawl", Event 2 (Email "derp@derp.com") "whatever event"])
+  --   pure (EventResponse [Event (toSqlKey 1) "1112223434" "event brawl", Event (toSqlKey 2) "derp@derp.com" "whatever event"])
+  -- Just name -> do
+  --   logInfo (text $ "showing " <> show name)
+  --   pure (EventResponse [Event (toSqlKey 1) "1112223434" "event brawl"])
 
 rsvps :: Handler Doc RsvpResponse
 rsvps = do

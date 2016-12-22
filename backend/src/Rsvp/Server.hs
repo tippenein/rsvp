@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 -- | Serve the API as an HTTP server.
@@ -29,7 +30,7 @@ import Text.PrettyPrint.Leijen.Text (int, text)
 import Database.Persist.Sql (runSqlPool)
 
 import Rsvp.API (api)
-import Rsvp.Server.Config (makePool, Environment(..))
+import Rsvp.Server.Config (makePool, Environment(..), Config(..))
 import Rsvp.Server.Handlers (server)
 import Rsvp.Server.Instrument
        (defaultPrometheusSettings, prometheus, requestDuration)
@@ -93,31 +94,32 @@ options = info (helper <*> parser) description
 
 runApp :: CliConfig -> IO ()
 runApp config@CliConfig {..} = do
-  requests <- Prom.registerIO requestDuration
-  env <- lookupSetting "ENV" Development
-  pool <- makePool env
+  rec
+      let settings = warpSettings config
+          middleware r =
+            logging . prometheus defaultPrometheusSettings r "rsvp" $ app
+          logging =
+            case accessLogs of
+              Disabled -> identity
+              Enabled -> RL.logStdout
+              DevMode -> RL.logStdoutDev
+          app = serve api (server appConfig)
+      requests <- Prom.registerIO requestDuration
+      env <- lookupSetting "ENV" Development
+      pool <- makePool env
+      let appConfig = Config pool logLevel env
   runSqlPool doMigrations pool
 
-  when enableGhcMetrics $
-    do statsEnabled <- getGCStatsEnabled
-       unless statsEnabled $
-         Log.withLogging logLevel $
-         Log.log
-           Warning
-           (text
+  when enableGhcMetrics $ do
+      statsEnabled <- getGCStatsEnabled
+      unless statsEnabled $
+        Log.withLogging logLevel $
+        Log.log
+          Warning
+          (text
               "Exporting GHC metrics but GC stats not enabled. Re-run with +RTS -T.")
-       void $ Prom.register Prom.ghcMetrics
+      void $ Prom.register Prom.ghcMetrics
   runSettings settings (middleware requests)
-  where
-    settings = warpSettings config
-    middleware r =
-      logging . prometheus defaultPrometheusSettings r "rsvp" $ app
-    logging =
-      case accessLogs of
-        Disabled -> identity
-        Enabled -> RL.logStdout
-        DevMode -> RL.logStdoutDev
-    app = serve api (server logLevel)
 
 -- | Generate warp settings from config
 --
