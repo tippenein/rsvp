@@ -36,6 +36,10 @@ Rsvp json sql=rsvps
     contact Text
     deriving Eq Show
 
+EventRsvps json sql=event_rsvps
+    event_id EventId
+    rsvp_id RsvpId
+
 Event json sql=events
     creator_id UserId
     name Text

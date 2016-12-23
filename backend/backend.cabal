@@ -28,6 +28,7 @@ library
     , protolude
     , aeson
     , bytestring
+    , esqueleto
     , exceptions
     , http-media
     , http-types

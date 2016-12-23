@@ -1,4 +1,4 @@
-name: rsvp-api
+name: shared
 version: 0.1.0
 synopsis: rsvp event system
 description: Please see README.md
@@ -25,14 +25,5 @@ library:
     - neat-interpolation
     - unordered-containers
     - persistent
-    - rsvp-server
     - servant
     - text
-
-tests:
-  rsvp-api-tests:
-    main: Main.hs
-    source-dirs: tests
-    dependencies:
-      - rsvp-api
-      - tasty

@@ -6,14 +6,14 @@ module Rsvp.Server.Handlers
   ( server
   ) where
 
-import           Protolude hiding (Handler, get)
+import           Protolude hiding (get, (%), from)
 
 import           Control.Monad.Except (ExceptT(..))
 import           Control.Monad.Log (logInfo)
 import           Control.Monad.Reader (ReaderT, runReaderT)
-import           Database.Persist
-import           Database.Persist.Sql (toSqlKey)
-import           Servant (ServantErr, Server, (:<|>)(..), (:~>)(..), enter)
+import           Database.Persist.Sql (toSqlKey, selectList)
+import           Database.Esqueleto
+import           Servant (err404, ServantErr, Server, (:<|>)(..), (:~>)(..), enter)
 import           Text.PrettyPrint.Leijen.Text (Doc, Pretty, text)
 
 import qualified Rsvp.Server.Config as Config
@@ -66,25 +66,26 @@ users = do
 
 getEvent :: Int64 -> Handler Doc Event
 getEvent id = do
-  logInfo (text $ "getting event " <> show id)
-  pure (Event (toSqlKey id) "event brawl" "1112223434")
-  -- record <- runDb $ get (toSqlKey id)
-  -- case record of
-  --   Nothing -> throwError err404
-  --   Just a -> entityVal a
+  -- logInfo (text $ "getting event " <> show id)
+  -- pure (Event (toSqlKey id) "event brawl" "1112223434")
+  record <- runDb $ get (toSqlKey id)
+  case record of
+    Nothing -> throwError err404
+    Just a -> pure a
 
 events :: Maybe Text -> Handler Doc EventResponse
-events _ = do
-  es <- runDb $ selectList [] []
-  pure $ EventResponse $ fmap entityVal es
-  -- case mname of
-  -- Nothing -> do
-  --   logInfo (text "showing all events")
-  --   -- pure (EventResponse [Event 1 (Phone "1112223434") "event brawl", Event 2 (Email "derp@derp.com") "whatever event"])
-  --   pure (EventResponse [Event (toSqlKey 1) "1112223434" "event brawl", Event (toSqlKey 2) "derp@derp.com" "whatever event"])
-  -- Just name -> do
-  --   logInfo (text $ "showing " <> show name)
-  --   pure (EventResponse [Event (toSqlKey 1) "1112223434" "event brawl"])
+events mname =
+  case mname of
+    Nothing -> do
+      logInfo (text "showing all events")
+      es <- runDb $ selectList [] []
+      pure (EventResponse $ fmap entityVal es)
+    Just name -> do
+      logInfo (text $ "showing matches to: " <> show name)
+      es <- runDb $ select $ from $ \events' -> do
+        where_ (events' ^. EventName `like` (%) ++. val name ++. (%))
+        pure events'
+      pure (EventResponse $ fmap entityVal es)
 
 rsvps :: Handler Doc RsvpResponse
 rsvps = do
@@ -94,10 +95,6 @@ rsvps = do
 createEvent :: Event -> Handler Doc EventCreateResponse
 createEvent event = do
   putText $ show event
-  -- event_id <- runDb $ insert event
+  _event_id <- runDb $ insert event
   logInfo (text "created new event ")
   pure (EventCreateResponse (Right "success"))
-
--- files = do
---   logInfo (text "showing assets")
---   serveDirectory "assets"
