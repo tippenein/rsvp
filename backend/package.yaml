@@ -42,6 +42,7 @@ library:
     - transformers
     - wai
     - wai-extra
+    - wai-cors
     - wai-middleware-prometheus
     - warp
     - wl-pprint-text
