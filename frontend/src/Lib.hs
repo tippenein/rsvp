@@ -43,14 +43,14 @@ instance FromJSON RsvpEvent
 
 data EventResponse =
   EventResponse { events :: [RsvpEvent] }
-  deriving (Eq, Show, Generic)
+  deriving (Eq, Show)
 
 instance FromJSON EventResponse where
   parseJSON (Object v) = EventResponse <$> v .: "events"
   parseJSON x = typeMismatch "RsvpEvents" x
 
 instance ToJSON EventResponse where
-  toJSON (EventResponse events) = object ["events" .= toJSON events]
+  toJSON (EventResponse e) = object ["events" .= toJSON e]
 
 data Model
   = Model
@@ -73,12 +73,8 @@ update (SelectEvent e) m = m { _selected = pure e }
 update (Query s) m = m { _query = s }
 update (EventsResponse rsp) m = m { _events = Map.fromList $ zip [(1::Int)..] rsp}
 
-banner :: MonadWidget t m => Dynamic t Model -> m ()
-banner model = div "row" $ do
-  text "hi from reflex"
-  text ""
-  display model
-  pure ()
+banner :: MonadWidget t m => m ()
+banner = elAttr "h2" ("style" =: "text-align: center") $ text "rsvp"
 
 -- footer :: MonadWidget t m => Dynamic t Model -> m ()
 -- footer _model = elClass "footer" "footer" $ do
@@ -89,8 +85,6 @@ view :: MonadWidget t m
      => Dynamic t Model
      -> m (Event t Action)
 view model = div "container" $ do
-  banner model
-
   (eventsResponse, requestEvents) <- div "row" $ do
     postBuild <- getPostBuild
     q <- Widget.searchInput
@@ -131,16 +125,17 @@ eventEl sel b = do
   let commonAttrs = constDyn $ "class" =: "event-wrap"
   let attrs = fmap (\s -> Common.monoidGuard s $ selectedStyle ) sel
   (e,_) <- elDynAttr' "li" (attrs <> commonAttrs) $ do
-    dynText $ fmap contact b
-    text " - "
     dynText $ fmap name b
+    text " - "
+    dynText $ fmap contact b
   pure e
 
 selectedStyle :: Map Text Text
 selectedStyle = "style" =: "border: solid 1px red"
 
 bodyElement :: MonadWidget t m => m ()
-bodyElement =
+bodyElement = do
+  banner
   mainContainer $ do
     rec changes <- view model
         model <- foldDyn update initialModel changes
