@@ -10,6 +10,7 @@ import qualified Data.Map as Map
 import           Reflex
 import           Reflex.Dom
 
+import qualified Data.Text as T
 import qualified Widget
 import qualified Common
 import Shared.Types hiding (Event)
@@ -41,7 +42,7 @@ initialModel
 update :: Action -> Model -> Model
 update InitialLoad m = m
 update (SelectEvent e) m = m { _selected = pure e }
-update (Query s) m = m { _query = s }
+update (Query s) m = m { _query = s  }
 update (EventsPayload (EventResponse rsp)) m = m { _events = Map.fromList $ zip [(1::Int)..] rsp }
 
 banner :: MonadWidget t m => m ()
@@ -139,5 +140,8 @@ mkReqTo :: Route -> Action -> XhrRequest ()
 mkReqTo u InitialLoad = XhrRequest "GET" (defaultUrl u) def
 mkReqTo u (Query q) = XhrRequest "GET" uri def
   where
-    uri = defaultUrl u <> "?q=" <> q
+    uri = defaultUrl u <> "?name=" <> q
 mkReqTo _ _ = Protolude.error "invalid req action"
+
+queryMap :: Map Text Text -> Text
+queryMap m = T.intercalate "&" $ map (\(a,b) -> a <> "=" <> b) $ Map.toList m

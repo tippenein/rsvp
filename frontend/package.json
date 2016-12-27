@@ -19,7 +19,7 @@
     "copy:static": "cp -r dist/* ../public/",
     "watch:lib": "onchange 'src/*.hs' -- npm run build:js:dev",
     "watch:css": "onchange 'static/scss/*.scss' -- npm run build:css",
-    "watch:all": "npm-run-all -p serve watch:css watch:lib move:static"
+    "watch:all": "npm-run-all -p serve watch:css watch:lib copy:static"
   },
   "devDependencies": {
     "autoprefixer": "^6.3.1",
