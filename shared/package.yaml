@@ -14,16 +14,12 @@ default-extensions:
   - RecordWildCards
 
 dependencies:
-  - base >= 4.9 && < 5
+  - base >= 4.8 && < 5
   - protolude
 
 library:
   source-dirs: src
   dependencies:
     - aeson
-    - http-media
-    - unordered-containers
     - persistent
     - persistent-template
-    - servant
-    - text

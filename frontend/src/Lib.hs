@@ -21,36 +21,13 @@ import           Reflex.Dom
 
 import qualified Widget
 import qualified Common
-
--- shared types
--- import Rsvp.Shared.Types
+import Shared.Types hiding (Event)
 
 data Action
   = InitialLoad
   | Query Text
   | SelectEvent Int
   | EventsResponse [RsvpEvent]
-
-data RsvpEvent
-  = RsvpEvent
-  { creator_id :: Int64
-  , name :: Text
-  , contact :: Text
-  } deriving (Show, Eq, Generic)
-
-instance ToJSON RsvpEvent
-instance FromJSON RsvpEvent
-
-data EventResponse =
-  EventResponse { events :: [RsvpEvent] }
-  deriving (Eq, Show)
-
-instance FromJSON EventResponse where
-  parseJSON (Object v) = EventResponse <$> v .: "events"
-  parseJSON x = typeMismatch "RsvpEvents" x
-
-instance ToJSON EventResponse where
-  toJSON (EventResponse e) = object ["events" .= toJSON e]
 
 data Model
   = Model
@@ -94,7 +71,7 @@ view model = div "container" $ do
                                 , InitialLoad <$ postBuild
                                 ]
     rsp :: Event t XhrResponse <- performRequestAsync $ mkReqTo "events" <$> requestEvents
-    let eventsResponse :: Event t [RsvpEvent] = events <$> fmapMaybe decodeXhrResponse rsp
+    let eventsResponse :: Event t [RsvpEvent] = fmapMaybe decodeXhrResponse rsp
     pure (eventsResponse, requestEvents)
 
   let eventMap = fmap _events model
@@ -125,13 +102,13 @@ eventEl sel b = do
   let commonAttrs = constDyn $ "class" =: "event-wrap"
   let attrs = fmap (\s -> Common.monoidGuard s $ selectedStyle ) sel
   (e,_) <- elDynAttr' "li" (attrs <> commonAttrs) $ do
-    dynText $ fmap name b
+    dynText $ fmap eventName b
     text " - "
-    dynText $ fmap contact b
+    dynText $ fmap eventContact b
   pure e
 
 selectedStyle :: Map Text Text
-selectedStyle = "style" =: "border: solid 1px red"
+selectedStyle = "style" =: "border: solid 1px #4748f9"
 
 bodyElement :: MonadWidget t m => m ()
 bodyElement = do

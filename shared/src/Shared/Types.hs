@@ -45,6 +45,7 @@ Event json sql=events
     deriving Eq Show
 |]
 
+type RsvpEvent = Event
 
 newtype UserResponse =
   UserResponse [User]
