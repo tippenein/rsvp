@@ -1,14 +1,50 @@
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric              #-}
+{-# LANGUAGE EmptyDataDecls             #-}
+{-# LANGUAGE FlexibleContexts           #-}
+{-# LANGUAGE FlexibleInstances          #-}
+{-# LANGUAGE GADTs                      #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses      #-}
+{-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE QuasiQuotes                #-}
+{-# LANGUAGE RecordWildCards            #-}
+{-# LANGUAGE TemplateHaskell            #-}
+{-# LANGUAGE TypeFamilies               #-}
 
--- | Shared response types
-module Rsvp.Response where
+module Shared.Types where
 
 import           Data.Aeson
 import           Data.Aeson.Types
 
-import Rsvp.Server.Models
+import Protolude
+import Database.Persist.TH (
+  mkMigrate, mkPersist, persistLowerCase,
+  share, sqlSettings)
 
-import           Protolude
+share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
+User json sql=users
+    name Text
+    email Text
+    deriving Eq Show
+
+Rsvp json sql=rsvps
+    event_id EventId
+    name Text
+    contact Text
+    deriving Eq Show
+
+EventRsvps json sql=event_rsvps
+    event_id EventId
+    rsvp_id RsvpId
+    deriving Eq Show
+
+Event json sql=events
+    creator_id UserId
+    name Text
+    contact Text
+    deriving Eq Show
+|]
+
 
 newtype UserResponse =
   UserResponse [User]

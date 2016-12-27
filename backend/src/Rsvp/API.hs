@@ -18,8 +18,7 @@ import qualified NeatInterpolation as NI
 import qualified Prelude
 import           Servant.API
 
-import           Rsvp.Server.Models
-import           Rsvp.Response
+import           Shared.Types
 import           Rsvp.API.Internal (HTML)
 
 type API = RsvpAPI :<|> Raw

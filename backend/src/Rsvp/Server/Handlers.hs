@@ -18,7 +18,7 @@ import           Servant (serveDirectory, err404, ServantErr, Server, (:<|>)(..)
 import           Text.PrettyPrint.Leijen.Text (Doc, Pretty, text)
 
 import           Rsvp.API
-import           Rsvp.Response
+import           Shared.Types
 import qualified Rsvp.Server.Config as Config
 import qualified Rsvp.Server.Logging as Log
 import           Rsvp.Server.Models

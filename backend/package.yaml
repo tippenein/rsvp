@@ -13,9 +13,13 @@ default-extensions:
   - OverloadedStrings
   - RecordWildCards
 
+packages:
+  - /backend
+  - /shared
 dependencies:
   - base >= 4.9 && < 5
   - protolude
+  - shared
 
 library:
   source-dirs: src

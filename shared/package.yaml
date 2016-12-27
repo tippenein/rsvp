@@ -22,8 +22,8 @@ library:
   dependencies:
     - aeson
     - http-media
-    - neat-interpolation
     - unordered-containers
     - persistent
+    - persistent-template
     - servant
     - text
