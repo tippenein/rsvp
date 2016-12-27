@@ -46,6 +46,7 @@ Event json sql=events
 |]
 
 type RsvpEvent = Event
+type DbKey = Int64
 
 newtype UserResponse =
   UserResponse [User]

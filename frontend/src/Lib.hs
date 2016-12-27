@@ -1,21 +1,12 @@
 {-# LANGUAGE RecursiveDo #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE FlexibleContexts #-}
 
 module Lib where
 
-import           Data.Aeson
-import           Data.Aeson.Types
-import           Data.Int (Int64)
-import           Data.Map (Map)
 import qualified Data.Map as Map
-import           Data.Monoid ((<>))
-import           Data.Text (Text)
-import           GHC.Generics
-import           Prelude hiding (div)
 import           Reflex
 import           Reflex.Dom
 
@@ -23,11 +14,14 @@ import qualified Widget
 import qualified Common
 import Shared.Types hiding (Event)
 
+import Protolude hiding (div)
+import Prelude()
+
 data Action
   = InitialLoad
   | Query Text
   | SelectEvent Int
-  | EventsResponse [RsvpEvent]
+  | EventsPayload EventResponse
 
 data Model
   = Model
@@ -48,7 +42,7 @@ update :: Action -> Model -> Model
 update InitialLoad m = m
 update (SelectEvent e) m = m { _selected = pure e }
 update (Query s) m = m { _query = s }
-update (EventsResponse rsp) m = m { _events = Map.fromList $ zip [(1::Int)..] rsp}
+update (EventsPayload (EventResponse rsp)) m = m { _events = Map.fromList $ zip [(1::Int)..] rsp }
 
 banner :: MonadWidget t m => m ()
 banner = elAttr "h2" ("style" =: "text-align: center") $ text "rsvp"
@@ -70,8 +64,8 @@ view model = div "container" $ do
     let requestEvents = leftmost [ Query <$> updated query
                                 , InitialLoad <$ postBuild
                                 ]
-    rsp :: Event t XhrResponse <- performRequestAsync $ mkReqTo "events" <$> requestEvents
-    let eventsResponse :: Event t [RsvpEvent] = fmapMaybe decodeXhrResponse rsp
+    rsp :: Event t XhrResponse <- performRequestAsync $ mkReqTo EventsRoute <$> requestEvents
+    let eventsResponse :: Event t EventResponse = fmapMaybe decodeXhrResponse rsp
     pure (eventsResponse, requestEvents)
 
   let eventMap = fmap _events model
@@ -85,7 +79,7 @@ view model = div "container" $ do
     pure bs'
 
   pure $ leftmost
-      [ EventsResponse <$> eventsResponse
+      [ EventsPayload <$> eventsResponse
       , SelectEvent <$> eventSelected
       , requestEvents
       ]
@@ -100,7 +94,7 @@ eventEl :: (MonadWidget t m)
    -> m(El t)
 eventEl sel b = do
   let commonAttrs = constDyn $ "class" =: "event-wrap"
-  let attrs = fmap (\s -> Common.monoidGuard s $ selectedStyle ) sel
+  let attrs = fmap (`Common.monoidGuard` selectedStyle) sel
   (e,_) <- elDynAttr' "li" (attrs <> commonAttrs) $ do
     dynText $ fmap eventName b
     text " - "
@@ -128,12 +122,22 @@ mainContainer body = do
 div :: MonadWidget t m => Text -> m a -> m a
 div = elClass "div"
 
-defaultUrl :: Text -> Text
-defaultUrl t = "http://localhost:8081/" <> t
+data Route
+  = EventsRoute
+  | EventRoute DbKey
+  | UsersRoute
+  | UserRoute DbKey
+  deriving (Show, Eq)
 
-mkReqTo :: Text -> Action -> XhrRequest ()
+defaultUrl :: Route -> Text
+defaultUrl EventsRoute = "http://localhost:8081/events"
+defaultUrl (EventRoute i) = "http://localhost:8081/events/" <> Protolude.show i
+defaultUrl UsersRoute = "http://localhost:8081/users"
+defaultUrl (UserRoute i)= "http://localhost:8081/users" <> Protolude.show i
+
+mkReqTo :: Route -> Action -> XhrRequest ()
 mkReqTo u InitialLoad = XhrRequest "GET" (defaultUrl u) def
 mkReqTo u (Query q) = XhrRequest "GET" uri def
   where
     uri = defaultUrl u <> "?q=" <> q
-mkReqTo _ _ = error "invalid req action"
+mkReqTo _ _ = Protolude.error "invalid req action"

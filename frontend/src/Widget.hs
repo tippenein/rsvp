@@ -4,24 +4,24 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE JavaScriptFFI      #-}
 {-# LANGUAGE OverloadedStrings  #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 
 module Widget where
 
 import           Reflex
 import           Reflex.Dom
 
-import           Data.Text (Text)
 import qualified Data.Text as T
 import           Data.Default (Default)
-import           Data.Map (Map)
 import qualified Data.Map as Map
 import           Data.Maybe
 import           Data.Monoid
 import           Data.Time.Clock (UTCTime)
 import           Data.Time.Format (defaultTimeLocale, parseTimeM)
-import           Text.Read (readMaybe)
 
 import           Common
+import           Protolude hiding ((&))
+
 type PageTitle = Text
 
 searchInput :: MonadWidget t m => m (TextInput t)
@@ -77,7 +77,7 @@ maybeButton :: MonadWidget t m
             -> Text -- ^ Static button label
             -> m (Event t ())
 maybeButton enabled label = do
-    attrs <- forDyn enabled $ \e -> monoidGuard (not e) $ "disabled" =: "disabled"
+    let attrs = ffor enabled $ \e -> monoidGuard (not e) $ "disabled" =: "disabled"
     (btn, _) <- elDynAttr' "button" attrs $ text label
     pure $ domEvent Click btn
 
@@ -102,24 +102,25 @@ selectableList :: (MonadWidget t m, Ord k)
                -> m (Event t k)
                -- ^ List fires events whenever an element is selected
 selectableList selection elems mkEntry = do
-    selectEntry <- listWithKey elems $ \k v -> do
-        isSelected <- forDyn selection $ \s -> s == Just k
-        fmap (const k) <$> mkEntry isSelected v
-    switchPromptlyDyn <$> mapDyn (leftmost . Map.elems) selectEntry
+  selectEntry <- listWithKey elems $ \k v -> do
+      let isSelected = ffor selection $ \s -> s == Just k
+      fmap (const k) <$> mkEntry isSelected v
+  let selected = fmap (leftmost . Map.elems) selectEntry
+  pure $ switchPromptlyDyn selected
 
 dynCombine :: (Reflex t, MonadHold t m)
            => Dynamic t a -> Dynamic t b
            -> (a -> b -> c)
            -> m (Dynamic t c)
-dynCombine a b f = combineDyn f a b
+dynCombine a b f = pure (zipDynWith f a b)
 
 dynCombine3 :: (Reflex t, MonadHold t m)
             => Dynamic t a -> Dynamic t b -> Dynamic t c
             -> (a -> b -> c -> d)
             -> m (Dynamic t d)
 dynCombine3 da db dc f = do
-    dg <- combineDyn f da db
-    combineDyn (\g c -> g c) dg dc
+  let dg = zipDynWith f da db
+  pure $ zipDynWith (\g c -> g c) dg dc
 
 checkboxAttrs :: forall b t.
   (Reflex t, Default b, HasAttributes b, Attrs b ~ Dynamic t (Map Text Text))
