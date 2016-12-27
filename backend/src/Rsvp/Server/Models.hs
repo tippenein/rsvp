@@ -1,13 +1,12 @@
 {-# LANGUAGE FlexibleContexts #-}
 module Rsvp.Server.Models where
 
-import           Control.Monad.Reader
-import           Database.Persist.Sql
+import Control.Monad.Reader
+import Database.Persist.Sql
+import Rsvp.Server.Config
+import Shared.Types (migrateAll)
 
 import Protolude
-
-import Rsvp.Server.Config
-import Shared.Types
 
 doMigrations :: SqlPersistT IO ()
 doMigrations = runMigration migrateAll

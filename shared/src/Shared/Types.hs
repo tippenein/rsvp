@@ -13,8 +13,10 @@
 
 module Shared.Types where
 
+import qualified Data.Text as T
 import           Data.Aeson
 import           Data.Aeson.Types
+import qualified Prelude
 
 import Protolude
 import Database.Persist.TH (
@@ -94,3 +96,26 @@ instance FromJSON EventCreateResponse where
 
 instance ToJSON EventCreateResponse where
   toJSON (EventCreateResponse event) = object ["event" .= toJSON event]
+
+-- json -----------------------------------------------
+
+aesonDef :: Options
+aesonDef = defaultOptions { fieldLabelModifier = dropIdentifier }
+
+-- instance ToJSON (Entity Event) where
+--   toJSON (Entity pid (e@Event{..})) = toJSON e <$> object [ "id" .= pid ]
+
+-- instance FromJSON ContactInfo where
+--   parseJSON = withObject "contact_info" $ \o -> do
+--     kind <- o .: "kind"
+--     case kind of
+--       "phone" -> Phone <$> o .: "phone"
+--       "email" -> Email <$> o .: "email"
+--       _        -> panic ("unknown contact info: " <> kind)
+
+-- instance ToJSON ContactInfo where
+--   toJSON (Phone t) = object [ "phone" .= t]
+--   toJSON (Email t) = object [ "email" .= t]
+
+dropIdentifier :: Prelude.String -> Prelude.String
+dropIdentifier = T.unpack . T.intercalate "_" . drop 2 . T.splitOn "_" . T.pack

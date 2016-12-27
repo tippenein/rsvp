@@ -13,12 +13,13 @@
     "build:js": "stack build && npm run copy:stackbuild && npm run uglify",
     "build:js:dev": "stack build && npm run copy:stackbuild",
     "build:css": "npm run scss && npm run autoprefixer",
-    "build:dist": "mkdir -p dist/ && npm run build:js && npm run build:css",
-    "build:dist:dev": "mkdir -p dist/ && npm run build:js:dev && npm run build:css",
+    "build:dist": "mkdir -p dist/ && npm run build:js && npm run build:css && npm run copy:static",
+    "build:dist:dev": "mkdir -p dist/ && npm run build:js:dev && npm run build:css  && npm run copy:static",
     "serve": "browser-sync start --server 'dist/' --files 'dist/css/*.css, dist/*.js, **/*.html, !node_modules/**/*.html'",
+    "copy:static": "cp -r dist/* ../public/",
     "watch:lib": "onchange 'src/*.hs' -- npm run build:js:dev",
     "watch:css": "onchange 'static/scss/*.scss' -- npm run build:css",
-    "watch:all": "npm-run-all -p serve watch:css watch:lib"
+    "watch:all": "npm-run-all -p serve watch:css watch:lib move:static"
   },
   "devDependencies": {
     "autoprefixer": "^6.3.1",

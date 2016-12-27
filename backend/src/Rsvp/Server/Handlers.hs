@@ -24,7 +24,7 @@ import qualified Rsvp.Server.Logging as Log
 import           Rsvp.Server.Models
 
 files :: Application
-files = serveDirectory "static"
+files = serveDirectory "public"
 
 -- | rsvp API implementation.
 server :: Config.Config -> Server API
