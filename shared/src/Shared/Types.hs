@@ -13,12 +13,12 @@
 
 module Shared.Types where
 
-import qualified Data.Text as T
 import           Data.Aeson
 import           Data.Aeson.Types
+import qualified Data.Text as T
 import qualified Prelude
 
-import Protolude
+import           Protolude
 import Database.Persist.TH (
   mkMigrate, mkPersist, persistLowerCase,
   share, sqlSettings)
@@ -83,8 +83,6 @@ instance FromJSON EventResponse where
 instance ToJSON EventResponse where
   toJSON (EventResponse events) = object ["events" .= toJSON events]
 
-type Status = Either Text Text
-
 newtype EventCreateResponse =
   EventCreateResponse Status
   deriving (Eq, Show, Generic)
@@ -93,9 +91,18 @@ instance FromJSON EventCreateResponse where
   parseJSON (Object v) = EventCreateResponse <$> v .: "status"
   parseJSON x = typeMismatch "Events" x
 
+data Status
+  = Success Text
+  | Warning Text
+  | Info Text
+  | Error Text
+  deriving (Show, Eq, Generic)
+
+instance ToJSON Status
+instance FromJSON Status
 
 instance ToJSON EventCreateResponse where
-  toJSON (EventCreateResponse event) = object ["event" .= toJSON event]
+  toJSON (EventCreateResponse status) = object ["status" .= toJSON status]
 
 -- json -----------------------------------------------
 

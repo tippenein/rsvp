@@ -74,7 +74,7 @@ createEvent event = do
   putText $ show event
   _event_id <- runDb $ insert event
   logInfo (text $ "created new event " <> show event)
-  pure (EventCreateResponse (Right "success"))
+  pure (EventCreateResponse (Success "successfully created event"))
 
 events :: Maybe Text -> Handler Doc EventResponse
 events mname =

@@ -6,28 +6,41 @@
 
 module Lib where
 
+import           Control.Lens hiding (view)
+import           Data.Aeson (ToJSON(..), Value(..), encode)
+import           Data.ByteString.Lazy (ByteString)
 import qualified Data.Map as Map
+import qualified Data.Text as T
+import           Database.Persist.Sql (toSqlKey)
 import           Reflex
 import           Reflex.Dom
 
-import qualified Data.Text as T
+import           Common
+import qualified Component
+import           Request
+import           Shared.Types hiding (Event)
+import qualified Shared.Types as Shared
 import qualified Widget
-import qualified Common
-import Shared.Types hiding (Event)
 
-import Protolude hiding (div)
-import Prelude()
+import           Protolude hiding (div, (&), ByteString)
+import           Prelude ()
 
 data Action
   = InitialLoad
   | Query Text
   | SelectEvent Int
+  | NewEvent
+  | NewUser User
+  | ToggleEventForm
   | EventsPayload EventResponse
+  | CreateEventPayload EventCreateResponse
 
 data Model
   = Model
   { _events :: Map Int RsvpEvent
   , _query :: Text
+  , _status :: Maybe Status
+  , _show_event_form :: Bool
   , _selected :: Maybe Int
   } deriving (Show)
 
@@ -36,6 +49,8 @@ initialModel
   = Model
   { _events = Map.empty
   , _query = ""
+  , _status = Nothing
+  , _show_event_form = False
   , _selected = Nothing
   }
 
@@ -44,6 +59,10 @@ update InitialLoad m = m
 update (SelectEvent e) m = m { _selected = pure e }
 update (Query s) m = m { _query = s  }
 update (EventsPayload (EventResponse rsp)) m = m { _events = Map.fromList $ zip [(1::Int)..] rsp }
+update NewEvent m = m { _status = pure $ Info "creating new event" }
+update (NewUser _) m = m
+update (ToggleEventForm) m = m { _show_event_form = not $ _show_event_form m }
+update (CreateEventPayload (EventCreateResponse res)) m = m { _status = pure res }
 
 banner :: MonadWidget t m => m ()
 banner = elAttr "h2" ("style" =: "text-align: center") $ text "rsvp"
@@ -57,53 +76,46 @@ view :: MonadWidget t m
      => Dynamic t Model
      -> m (Event t Action)
 view model = div "container" $ do
-  (eventsResponse, requestEvents) <- div "row" $ do
-    postBuild <- getPostBuild
-    q <- Widget.searchInput
+  div "errors row" $ do
+    -- let status = fmap _status model
+    -- Component.showStatus status
+    display $ fmap _status model
+    pure ()
 
-    let query = _textInput_value q
-    let requestEvents = leftmost [ Query <$> updated query
-                                , InitialLoad <$ postBuild
-                                ]
-    rsp :: Event t XhrResponse <- performRequestAsync $ mkReqTo EventsRoute <$> requestEvents
-    let eventsResponse :: Event t EventResponse = fmapMaybe decodeXhrResponse rsp
-    pure (eventsResponse, requestEvents)
+  newEventClick <- elClass "div" "pull-right" $ do
+    let v = fmap (`monoidGuard` Component.noDisplay) $ fmap _show_event_form model
+    let val = zipDynWith Map.union v (constDyn $ "value" =: "new event")
+    btnDynAttr (constDyn ("class" =: "btn btn-primary") <> val)
 
-  let eventMap = fmap _events model
+
+  (eventCreateResponse, submitEvent, cancelEvent) <- Component.eventForm (fmap _show_event_form model)
+
+  (eventsResponse, requestEvents) <- searchForm
+
   let selectedEvent = fmap _selected model
-  eventSelected <- divClass "row" $ do
-    bs' <- divClass "event-list"$ do
-      bs <- el "ul" $ Widget.selectableList selectedEvent eventMap $ \sel p -> do
-        domEvent Click <$> eventEl sel p
-      pure bs
-    display $ zipDynWith maybeLookup selectedEvent eventMap
-    pure bs'
+  eventSelected <- Component.eventListing (fmap _events model) selectedEvent
 
   pure $ leftmost
       [ EventsPayload <$> eventsResponse
       , SelectEvent <$> eventSelected
+      , NewEvent <$ submitEvent
+      , ToggleEventForm <$ leftmost [newEventClick, cancelEvent]
+      , CreateEventPayload <$> eventCreateResponse
       , requestEvents
       ]
 
-maybeLookup :: Maybe Int -> Map.Map Int a -> Maybe a
-maybeLookup midx m = case midx of
-  Nothing -> Nothing
-  Just idx -> Map.lookup idx m
-eventEl :: (MonadWidget t m)
-   => Dynamic t Bool
-   -> Dynamic t RsvpEvent
-   -> m(El t)
-eventEl sel b = do
-  let commonAttrs = constDyn $ "class" =: "event-wrap"
-  let attrs = fmap (`Common.monoidGuard` selectedStyle) sel
-  (e,_) <- elDynAttr' "li" (attrs <> commonAttrs) $ do
-    dynText $ fmap eventName b
-    text " - "
-    dynText $ fmap eventContact b
-  pure e
+searchForm :: MonadWidget t m => m (Event t EventResponse, Event t Action)
+searchForm = div "row" $ do
+  postBuild <- getPostBuild
+  q <- Widget.searchInput
 
-selectedStyle :: Map Text Text
-selectedStyle = "style" =: "border: solid 1px #4748f9"
+  let query = _textInput_value q
+  let requestEvents = leftmost [ Query <$> updated query
+                                , InitialLoad <$ postBuild
+                                ]
+  rsp :: Event t XhrResponse <- performRequestAsync $ mkGET EventsRoute <$> requestEvents
+  let eventsResponse :: Event t EventResponse = fmapMaybe decodeXhrResponse rsp
+  pure (eventsResponse, requestEvents)
 
 bodyElement :: MonadWidget t m => m ()
 bodyElement = do
@@ -123,25 +135,10 @@ mainContainer body = do
 div :: MonadWidget t m => Text -> m a -> m a
 div = elClass "div"
 
-data Route
-  = EventsRoute
-  | EventRoute DbKey
-  | UsersRoute
-  | UserRoute DbKey
-  deriving (Show, Eq)
 
-defaultUrl :: Route -> Text
-defaultUrl EventsRoute = "http://localhost:8081/events"
-defaultUrl (EventRoute i) = "http://localhost:8081/events/" <> Protolude.show i
-defaultUrl UsersRoute = "http://localhost:8081/users"
-defaultUrl (UserRoute i)= "http://localhost:8081/users" <> Protolude.show i
-
-mkReqTo :: Route -> Action -> XhrRequest ()
-mkReqTo u InitialLoad = XhrRequest "GET" (defaultUrl u) def
-mkReqTo u (Query q) = XhrRequest "GET" uri def
+mkGET :: Route -> Action -> XhrRequest ()
+mkGET u InitialLoad = XhrRequest "GET" (defaultUrl u) def
+mkGET u (Query q) = XhrRequest "GET" uri def
   where
     uri = defaultUrl u <> "?name=" <> q
-mkReqTo _ _ = Protolude.error "invalid req action"
-
-queryMap :: Map Text Text -> Text
-queryMap m = T.intercalate "&" $ map (\(a,b) -> a <> "=" <> b) $ Map.toList m
+mkGET _ _ = Protolude.error "invalid req action"
