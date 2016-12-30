@@ -1,3 +1,12 @@
+machine:
+  services:
+    - postgresql
+
+database:
+  override:
+    - createuser -s -d test
+    - createdb rsvptest
+
 dependencies:
   cache_directories:
     - "~/.cabal"
