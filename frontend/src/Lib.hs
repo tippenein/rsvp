@@ -31,6 +31,7 @@ data Action
   | SelectEvent Int
   | NewEvent
   | NewUser User
+  | CloseStatus
   | ToggleEventForm
   | EventsPayload EventResponse
   | CreateEventPayload EventCreateResponse
@@ -59,6 +60,7 @@ update InitialLoad m = m
 update (SelectEvent e) m = m { _selected = pure e }
 update (Query s) m = m { _query = s  }
 update (EventsPayload (EventResponse rsp)) m = m { _events = Map.fromList $ zip [(1::Int)..] rsp }
+update CloseStatus m = m { _status = Nothing }
 update NewEvent m = m { _status = pure $ Info "creating new event" }
 update (NewUser _) m = m
 update ToggleEventForm m = m { _show_event_form = not $ _show_event_form m }
@@ -76,10 +78,10 @@ view :: MonadWidget t m
      => Dynamic t Model
      -> m (Event t Action)
 view model = div "container" $ do
-  div "errors row" $ do
+  closeStatus <- div "errors row" $ do
     let status = fmap _status model
-    _ <- widgetHoldHelper Component.showStatus Nothing $ updated status
-    pure ()
+    cs <- widgetHoldHelper Component.showStatus Nothing $ updated status
+    pure $ switchPromptlyDyn cs
 
   let showEventForm = fmap _show_event_form model
   newEventClick <- elClass "div" "pull-right" $ do
@@ -99,6 +101,7 @@ view model = div "container" $ do
       [ EventsPayload <$> eventsResponse
       , SelectEvent <$> eventSelected
       , NewEvent <$ submitEvent
+      , CloseStatus <$ closeStatus
       , ToggleEventForm <$ leftmost [newEventClick, cancelEvent]
       , CreateEventPayload <$> eventCreateResponse
       , requestEvents

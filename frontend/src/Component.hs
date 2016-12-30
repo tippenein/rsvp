@@ -4,6 +4,7 @@ module Component where
 
 import           Control.Lens hiding (view, element)
 import qualified Data.Map as Map
+import qualified Data.Text as T
 import           Database.Persist.Sql (toSqlKey)
 import           GHCJS.DOM.Types (File)
 import           Reflex.Dom
@@ -68,12 +69,34 @@ eventListing eventMap selectedEvent = do
     pure bs'
   pure eventSelected
 
-showStatus :: MonadWidget t m => Maybe Status -> m ()
-showStatus (Just (Shared.Success t)) = text t
-showStatus (Just (Shared.Warning t)) = text t
-showStatus (Just (Shared.Info t)   ) = text t
-showStatus (Just (Shared.Error t)  ) = text t
-showStatus Nothing = blank
+showStatus :: MonadWidget t m => Maybe Status -> m (Event t ())
+showStatus (Just status) = flash status
+showStatus Nothing = pure never
+
+dismissableAlert :: (DomBuilder t m) => Status -> m (Event t ()) -> m (Event t ())
+dismissableAlert st body = do
+  let cls = T.intercalate " " ["alert", "alert-" <> clsFor st, "alert-dismissible"]
+  let attrs = mconcat [ "class" =: cls, "role" =: "alert"]
+  elAttr "div" attrs body
+  where
+    clsFor (Shared.Success _) = "success"
+    clsFor (Shared.Warning _) = "warning"
+    clsFor (Shared.Info    _) = "info"
+    clsFor (Shared.Error   _) = "error"
+
+flash :: MonadWidget t m => Status -> m (Event t ())
+flash status =
+  dismissableAlert status $ do
+    let attr = mconcat [ "type" =: "button"
+                       , "class" =: "close"
+                       , "data-dismiss" =: "alert"
+                       , "aria-label" =: "Close"
+                       ]
+    c <- btnAttr "×" attr
+      --  --elAttr "span" ("aria-hidden" =: "true") blank
+    text $ show status
+    pure c
+
 
 type FormInputType = Text
 
