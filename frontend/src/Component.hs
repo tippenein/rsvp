@@ -63,11 +63,17 @@ eventListing eventMap selectedEvent = do
   eventSelected <- divClass "row" $ do
     bs' <- divClass "event-list"$ do
       bs <- elClass "ul" "list-unstyle" $ Widget.selectableList selectedEvent eventMap $ \sel p ->
-        domEvent Click <$> Component.eventEl sel p
+        domEvent Click <$> eventEl sel p
       pure bs
     -- display $ zipDynWith maybeLookup selectedEvent eventMap
     pure bs'
   pure eventSelected
+
+flashStatus :: MonadWidget t m => Dynamic t (Maybe Status) -> m (Event t ())
+flashStatus status = div "errors row" $ do
+  cs <- widgetHoldHelper showStatus Nothing $ updated status
+  pure $ switchPromptlyDyn cs
+
 
 showStatus :: MonadWidget t m => Maybe Status -> m (Event t ())
 showStatus (Just status) = flash status
@@ -84,6 +90,12 @@ dismissableAlert st body = do
     clsFor (Shared.Info    _) = "info"
     clsFor (Shared.Error   _) = "error"
 
+adminControl :: MonadWidget t m => Dynamic t Bool -> m (Event t ())
+adminControl showEventForm = elClass "div" "pull-right" $ do
+  let v = fmap (`monoidGuard` Component.noDisplay) showEventForm
+  let val = zipDynWith Map.union v (constDyn $ "value" =: "new event")
+  btnDynAttr (constDyn ("class" =: "btn btn-primary") <> val)
+
 flash :: MonadWidget t m => Status -> m (Event t ())
 flash status =
   dismissableAlert status $ do
@@ -93,10 +105,8 @@ flash status =
                        , "aria-label" =: "Close"
                        ]
     c <- btnAttr "×" attr
-      --  --elAttr "span" ("aria-hidden" =: "true") blank
     text $ show status
     pure c
-
 
 type FormInputType = Text
 

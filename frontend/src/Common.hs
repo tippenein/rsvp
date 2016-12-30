@@ -5,10 +5,15 @@ import qualified Data.Text as T
 import qualified Data.Map as Map
 import           Data.Monoid
 import Reflex.Dom
--- import qualified GHCJS.Types    as T
 
 import Protolude
 import Prelude()
+-------------------------------------
+
+type ElAttrs = Map Text Text
+
+div :: MonadWidget t m => Text -> m a -> m a
+div = elClass "div"
 
 widgetHoldHelper
     :: MonadWidget t m
@@ -33,14 +38,10 @@ hsl h s l = "hsl(" <> inner <> ")"
 monoidGuard :: Monoid a => Bool -> a -> a
 monoidGuard p a = if p then a else mempty
 
-type ElAttrs = Map Text Text
-
 btn :: DomBuilder t m => Text -> m (Event t ())
 btn t = do
   (e, _) <- elAttr' "button" ("type" =: "button" <> "class" =: "btn btn-default") $ text t
   return $ domEvent Click e
-
--- foreign import javascript unsafe "console.log($1)" log :: T.JSString -> IO ()
 
 btnClass :: DomBuilder t m => Text -> Text -> m (Event t ())
 btnClass t c = btnAttr t ("class" =: c <> "type" =: "button")

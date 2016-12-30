@@ -3,6 +3,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE NondecreasingIndentation #-}
 
 module Lib where
 
@@ -67,35 +68,23 @@ update ToggleEventForm m = m { _show_event_form = not $ _show_event_form m }
 update (CreateEventPayload (EventCreateResponse res)) m = m { _status = pure res }
 
 banner :: MonadWidget t m => m ()
-banner = elAttr "h2" ("style" =: "text-align: center") $ text "rsvp"
-
--- footer :: MonadWidget t m => Dynamic t Model -> m ()
--- footer _model = elClass "footer" "footer" $ do
---   text "bye from reflex"
---   pure ()
+banner = elAttr "h2" ("style" =: "text-align: center") $ text "RSVP"
 
 view :: MonadWidget t m
      => Dynamic t Model
      -> m (Event t Action)
 view model = div "container" $ do
-  closeStatus <- div "errors row" $ do
-    let status = fmap _status model
-    cs <- widgetHoldHelper Component.showStatus Nothing $ updated status
-    pure $ switchPromptlyDyn cs
+  Component.flashStatus (fmap _status model) >>= \closeStatus -> do
 
   let showEventForm = fmap _show_event_form model
-  newEventClick <- elClass "div" "pull-right" $ do
-    let v = fmap (`monoidGuard` Component.noDisplay) showEventForm
-    let val = zipDynWith Map.union v (constDyn $ "value" =: "new event")
-    btnDynAttr (constDyn ("class" =: "btn btn-primary") <> val)
+  Component.adminControl showEventForm >>= \newEventClick -> do
 
+  Component.eventForm showEventForm >>= \(eventCreateResponse, submitEvent, cancelEvent) -> do
 
-  (eventCreateResponse, submitEvent, cancelEvent) <- Component.eventForm showEventForm
-
-  (eventsResponse, requestEvents) <- searchForm
+  searchForm >>= \(eventsResponse, requestEvents) -> do
 
   let selectedEvent = fmap _selected model
-  eventSelected <- Component.eventListing (fmap _events model) selectedEvent
+  Component.eventListing (fmap _events model) selectedEvent >>= \eventSelected -> do
 
   pure $ leftmost
       [ EventsPayload <$> eventsResponse
@@ -134,10 +123,6 @@ mainContainer body = do
   div "container"
     body
   pure ()
-
-div :: MonadWidget t m => Text -> m a -> m a
-div = elClass "div"
-
 
 mkGET :: Route -> Action -> XhrRequest ()
 mkGET u InitialLoad = XhrRequest "GET" (defaultUrl u) def
