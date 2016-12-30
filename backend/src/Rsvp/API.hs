@@ -36,6 +36,10 @@ type CreateEvent =
   :> ReqBody '[JSON] Event
   :> Post '[JSON] EventCreateResponse
 
+
+rsvpApi :: Proxy RsvpAPI
+rsvpApi = Proxy
+
 api :: Proxy API
 api = Proxy
 
@@ -53,14 +57,12 @@ instance MimeRender HTML RootPage where
             <script language="javascript" src="rts.js"></script>
             <script language="javascript" src="lib.js"></script>
             <script language="javascript" src="out.js"></script>
+            <link rel="stylesheet" type="text/css" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.6.3/css/font-awesome.min.css">
+            <link rel="stylesheet" type="text/css" href="http://fonts.googleapis.com/css?family=Lato">
+            <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.0.0-alpha.5/css/bootstrap.min.css">
+            <link rel="stylesheet" type="text/css" href="css/style.css">
           </head>
           <body>
-            <ul>
-            <li><a href="/users">users</a></li>
-            <li><a href="/events">events</a></li>
-            <li><a href="/rsvps">rsvps</a></li>
-            <li><a href="/metrics"><code>/metrics</code></a></li>
-            </ul>
           </body>
           <script language="javascript" src="runmain.js" defer></script>
         </html>

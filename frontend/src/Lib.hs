@@ -73,7 +73,7 @@ banner = elAttr "h2" ("style" =: "text-align: center") $ text "RSVP"
 view :: MonadWidget t m
      => Dynamic t Model
      -> m (Event t Action)
-view model = div "container" $ do
+view model = div "container" $
   Component.flashStatus (fmap _status model) >>= \closeStatus -> do
 
   let showEventForm = fmap _show_event_form model

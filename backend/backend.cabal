@@ -95,6 +95,7 @@ test-suite rsvp-api-tests
     , QuickCheck
     , quickcheck-instances
     , servant-quickcheck
+    , persistent
     , tasty
     , tasty-hspec
   default-language: Haskell2010

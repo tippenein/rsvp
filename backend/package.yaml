@@ -70,5 +70,6 @@ tests:
       - QuickCheck
       - quickcheck-instances
       - servant-quickcheck
+      - persistent
       - tasty
       - tasty-hspec

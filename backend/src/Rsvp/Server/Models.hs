@@ -1,17 +1,21 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE RankNTypes #-}
 module Rsvp.Server.Models where
 
-import Control.Monad.Reader
-import Database.Persist.Sql
-import Rsvp.Server.Config
-import Shared.Types (migrateAll)
+import           Control.Monad.Reader
+import qualified Database.Persist.Sql as Sql
+import           Rsvp.Server.Config
+import           Shared.Types (migrateAll)
 
-import Protolude
+import           Protolude
 
-doMigrations :: SqlPersistT IO ()
-doMigrations = runMigration migrateAll
+toKey :: forall record . Sql.ToBackendKey Sql.SqlBackend record => Int64 -> Sql.Key record
+toKey = Sql.toSqlKey
 
-runDb :: (MonadReader Config m, MonadIO m) => SqlPersistT IO b -> m b
+doMigrations :: Sql.SqlPersistT IO ()
+doMigrations = Sql.runMigration migrateAll
+
+runDb :: (MonadReader Config m, MonadIO m) => Sql.SqlPersistT IO b -> m b
 runDb query = do
   pool <- asks getPool
-  liftIO $ runSqlPool query pool
+  liftIO $ Sql.runSqlPool query pool

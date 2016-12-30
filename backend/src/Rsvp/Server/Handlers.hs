@@ -4,6 +4,7 @@
 -- | Implementation of the rsvp API.
 module Rsvp.Server.Handlers
   ( server
+  , rsvpServer
   ) where
 
 import           Protolude hiding (get, (%), from)
@@ -25,6 +26,17 @@ import           Rsvp.Server.Models
 
 files :: Application
 files = serveDirectory "public"
+
+rsvpServer :: Config.Config -> Server RsvpAPI
+rsvpServer config = enter (toHandler config) handlers
+  where
+    handlers =
+      pure RootPage :<|>
+      users :<|>
+      rsvps :<|>
+      getEvent :<|>
+      events :<|>
+      createEvent
 
 -- | rsvp API implementation.
 server :: Config.Config -> Server API

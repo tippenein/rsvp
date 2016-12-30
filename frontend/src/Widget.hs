@@ -42,6 +42,7 @@ headElementDyn :: MonadWidget t m => Dynamic t Text -> m ()
 headElementDyn title = do
   _ <- elDynHtml' "title" title
   stylesheetImports
+  pure ()
 
 stylesheetImports :: MonadWidget t m => m ()
 stylesheetImports = do
