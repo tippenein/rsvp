@@ -61,7 +61,7 @@ update (Query s) m = m { _query = s  }
 update (EventsPayload (EventResponse rsp)) m = m { _events = Map.fromList $ zip [(1::Int)..] rsp }
 update NewEvent m = m { _status = pure $ Info "creating new event" }
 update (NewUser _) m = m
-update (ToggleEventForm) m = m { _show_event_form = not $ _show_event_form m }
+update ToggleEventForm m = m { _show_event_form = not $ _show_event_form m }
 update (CreateEventPayload (EventCreateResponse res)) m = m { _status = pure res }
 
 banner :: MonadWidget t m => m ()
@@ -77,18 +77,18 @@ view :: MonadWidget t m
      -> m (Event t Action)
 view model = div "container" $ do
   div "errors row" $ do
-    -- let status = fmap _status model
-    -- Component.showStatus status
-    display $ fmap _status model
+    let status = fmap _status model
+    _ <- widgetHoldHelper Component.showStatus Nothing $ updated status
     pure ()
 
+  let showEventForm = fmap _show_event_form model
   newEventClick <- elClass "div" "pull-right" $ do
-    let v = fmap (`monoidGuard` Component.noDisplay) $ fmap _show_event_form model
+    let v = fmap (`monoidGuard` Component.noDisplay) showEventForm
     let val = zipDynWith Map.union v (constDyn $ "value" =: "new event")
     btnDynAttr (constDyn ("class" =: "btn btn-primary") <> val)
 
 
-  (eventCreateResponse, submitEvent, cancelEvent) <- Component.eventForm (fmap _show_event_form model)
+  (eventCreateResponse, submitEvent, cancelEvent) <- Component.eventForm showEventForm
 
   (eventsResponse, requestEvents) <- searchForm
 
@@ -111,8 +111,8 @@ searchForm = div "row" $ do
 
   let query = _textInput_value q
   let requestEvents = leftmost [ Query <$> updated query
-                                , InitialLoad <$ postBuild
-                                ]
+                               , InitialLoad <$ postBuild
+                               ]
   rsp :: Event t XhrResponse <- performRequestAsync $ mkGET EventsRoute <$> requestEvents
   let eventsResponse :: Event t EventResponse = fmapMaybe decodeXhrResponse rsp
   pure (eventsResponse, requestEvents)

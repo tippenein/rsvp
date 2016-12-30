@@ -5,9 +5,18 @@ import qualified Data.Text as T
 import qualified Data.Map as Map
 import           Data.Monoid
 import Reflex.Dom
+-- import qualified GHCJS.Types    as T
 
 import Protolude
 import Prelude()
+
+widgetHoldHelper
+    :: MonadWidget t m
+    => (a -> m b)
+    -> a
+    -> Event t a
+    -> m (Dynamic t b)
+widgetHoldHelper f eDef e = widgetHold (f eDef) (f <$> e)
 
 maybeLookup :: Maybe Int -> Map Int a -> Maybe a
 maybeLookup midx m = case midx of
@@ -28,11 +37,13 @@ type ElAttrs = Map Text Text
 
 btn :: DomBuilder t m => Text -> m (Event t ())
 btn t = do
-  (e, _) <- elAttr' "button" ("class" =: "btn btn-default") $ text t
+  (e, _) <- elAttr' "button" ("type" =: "button" <> "class" =: "btn btn-default") $ text t
   return $ domEvent Click e
 
+-- foreign import javascript unsafe "console.log($1)" log :: T.JSString -> IO ()
+
 btnClass :: DomBuilder t m => Text -> Text -> m (Event t ())
-btnClass t c = btnAttr t ("class" =: c)
+btnClass t c = btnAttr t ("class" =: c <> "type" =: "button")
 
 btnAttr :: DomBuilder t m => Text -> ElAttrs -> m (Event t ())
 btnAttr t attrs = do

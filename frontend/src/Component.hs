@@ -14,7 +14,7 @@ import qualified Widget
 import           Shared.Types hiding (Event)
 import           Request
 
-import           Protolude hiding (div, (&), ByteString)
+import           Protolude hiding (div, (&), ByteString, log)
 import           Prelude ()
 ------------------------------------
 
@@ -25,20 +25,25 @@ eventForm visible = do
   elDynAttr "div" attrs $ do
     (eventSubmitData, submitEvent, cancelEvent) <- mkEventForm
     let postData = Request.toPostWithEncode (defaultUrl EventsRoute) <$> eventSubmitData
+
     createRsp :: Event t XhrResponse <- performRequestAsync $ attachPromptlyDynWith const postData submitEvent
     let eventCreateResponse :: Event t EventCreateResponse = fmapMaybe decodeXhrResponse createRsp
     pure (eventCreateResponse, submitEvent, cancelEvent)
 
 mkEventForm :: MonadWidget t m => m (Dynamic t RsvpEvent, Event t (), Event t ())
 mkEventForm = do
-  (submitEvent, cancelEvent, nameDyn, contactDyn) <- el "form-inline" $ do
+  let attrs = mconcat ["class" =: "form event-form"
+                      , "action" =: "/events"
+                      , "method" =: "post"
+                      , "data-remote" =: "true"
+                      ]
+  (submitEvent, cancelEvent, nameDyn, contactDyn) <- elAttr "form" attrs $ do
     nameDyn <- formGroup "text" "eventName" "Event Name"
     contactDyn <- formGroup "text" "contactInfo" "Contact Info"
     files <- bootstrapFileInput
 
     cancelButton <- btn "cancel"
     submitButton <- btnClass "submit" "btn btn-primary"
-    el "hr" blank
     pure (submitButton, cancelButton, nameDyn, contactDyn)
 
   let e = Shared.Event (toSqlKey 1) <$> nameDyn <*> contactDyn
