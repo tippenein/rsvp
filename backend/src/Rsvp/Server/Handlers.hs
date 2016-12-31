@@ -86,7 +86,10 @@ createEvent event = do
   putText $ show event
   _event_id <- runDb $ insert event
   logInfo (text $ "created new event " <> show event)
-  pure (EventCreateResponse (Success "successfully created event"))
+  let rsp = CreateResponse { _message = Success "successfully created event"
+                           , _db_id = fromSqlKey _event_id
+                           , _posted_content = event }
+  pure $ EventCreateResponse rsp
 
 events :: Maybe Text -> Handler Doc EventResponse
 events mname =

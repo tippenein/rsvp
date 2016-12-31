@@ -51,7 +51,7 @@ instance Arbitrary User where
   arbitrary = User <$> arbitrary <*> arbitrary
 
 spec :: Config -> Spec
-spec cfg = do
+spec cfg =
   it "follows best practices" $
     withServantServer rsvpApi (pure $ rsvpServer cfg) $
       \burl ->

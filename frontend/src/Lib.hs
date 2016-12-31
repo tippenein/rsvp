@@ -7,12 +7,8 @@
 
 module Lib where
 
-import           Control.Lens hiding (view)
-import           Data.Aeson (ToJSON(..), Value(..), encode)
-import           Data.ByteString.Lazy (ByteString)
-import qualified Data.Map as Map
 import qualified Data.Text as T
-import           Database.Persist.Sql (toSqlKey)
+import qualified Data.Map as Map
 import           Reflex
 import           Reflex.Dom
 
@@ -20,7 +16,6 @@ import           Common
 import qualified Component
 import           Request
 import           Shared.Types hiding (Event)
-import qualified Shared.Types as Shared
 import qualified Widget
 
 import           Protolude hiding (div, (&), ByteString)
@@ -65,7 +60,10 @@ update CloseStatus m = m { _status = Nothing }
 update NewEvent m = m { _status = pure $ Info "creating new event" }
 update (NewUser _) m = m
 update ToggleEventForm m = m { _show_event_form = not $ _show_event_form m }
-update (CreateEventPayload (EventCreateResponse res)) m = m { _status = pure res }
+update (CreateEventPayload (EventCreateResponse rsp)) m =
+  m { _status = pure $ _message rsp,
+      _events = Map.insert (_db_id rsp) (_posted_content rsp) $ _events m
+    }
 
 banner :: MonadWidget t m => m ()
 banner = elAttr "h2" ("style" =: "text-align: center") $ text "RSVP"
@@ -79,7 +77,7 @@ view model = div "container" $
   let showEventForm = fmap _show_event_form model
   Component.adminControl showEventForm >>= \newEventClick -> do
 
-  Component.eventForm showEventForm >>= \(eventCreateResponse, submitEvent, cancelEvent) -> do
+  Component.eventForm showEventForm >>= \(eventCreateResponse, e, submitEvent, cancelEvent) -> do
 
   searchForm >>= \(eventsResponse, requestEvents) -> do
 
@@ -105,7 +103,8 @@ searchForm = div "row" $ do
   let requestEvents = leftmost [ Query <$> updated query
                                , InitialLoad <$ postBuild
                                ]
-  rsp :: Event t XhrResponse <- performRequestAsync $ mkGET EventsRoute <$> requestEvents
+  rsp :: Event t XhrResponse <- performRequestAsync $
+    mkGET EventsRoute <$> fromRequestEvent <$> requestEvents
   let eventsResponse :: Event t EventResponse = fmapMaybe decodeXhrResponse rsp
   pure (eventsResponse, requestEvents)
 
@@ -124,9 +123,6 @@ mainContainer body = do
     body
   pure ()
 
-mkGET :: Route -> Action -> XhrRequest ()
-mkGET u InitialLoad = XhrRequest "GET" (defaultUrl u) def
-mkGET u (Query q) = XhrRequest "GET" uri def
-  where
-    uri = defaultUrl u <> "?name=" <> q
-mkGET _ _ = Protolude.error "invalid req action"
+fromRequestEvent :: Action -> Maybe (Map Text Text)
+fromRequestEvent (Query q)= Just $ Map.fromList [("name", q)]
+fromRequestEvent _ = Nothing

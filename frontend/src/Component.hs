@@ -19,7 +19,7 @@ import           Protolude hiding (div, (&), ByteString, log)
 import           Prelude ()
 ------------------------------------
 
-eventForm :: MonadWidget t m => Dynamic t Bool -> m (Event t EventCreateResponse, Event t (), Event t ())
+eventForm :: MonadWidget t m => Dynamic t Bool -> m (Event t EventCreateResponse, Dynamic t RsvpEvent, Event t (), Event t ())
 eventForm visible = do
   let attrs' = fmap (`Common.monoidGuard` blockDisplay ) visible
   let attrs = zipDynWith Map.union attrs' (constDyn noDisplay)
@@ -29,14 +29,14 @@ eventForm visible = do
 
     createRsp :: Event t XhrResponse <- performRequestAsync $ attachPromptlyDynWith const postData submitEvent
     let eventCreateResponse :: Event t EventCreateResponse = fmapMaybe decodeXhrResponse createRsp
-    pure (eventCreateResponse, submitEvent, cancelEvent)
+    pure (eventCreateResponse, eventSubmitData, submitEvent, cancelEvent)
 
 mkEventForm :: MonadWidget t m => m (Dynamic t RsvpEvent, Event t (), Event t ())
 mkEventForm = do
   let attrs = mconcat ["class" =: "form event-form"
                       , "action" =: "/events"
                       , "method" =: "post"
-                      , "data-remote" =: "true"
+                      -- , "data-remote" =: "true"
                       ]
   (submitEvent, cancelEvent, nameDyn, contactDyn) <- elAttr "form" attrs $ do
     nameDyn <- formGroup "text" "eventName" "Event Name"
@@ -53,9 +53,8 @@ mkEventForm = do
 bootstrapFileInput :: MonadWidget t m => m (Dynamic t [File])
 bootstrapFileInput = do
   text "Event Image"
-  a <- elClass "label" "btn btn-default btn-file" $ do
-    f <- fileInput def
-    pure f
+  a <- elClass "label" "btn btn-default btn-file" $
+    pure =<< fileInput def
   pure $ _fileInput_value a
 
 eventListing :: MonadWidget t m => Dynamic t (Map Int RsvpEvent) -> Dynamic t (Maybe Int) -> m (Event t Int)
@@ -108,8 +107,7 @@ flash status =
     text $ show status
     pure c
 
-type FormInputType = Text
-
+-- XXX: use a FormGroupConfig to set up all possible options
 formGroup :: MonadWidget t m
           => Text -- email | text | phone
           -> Text -- id
@@ -141,9 +139,6 @@ eventEl sel b = do
     text " - "
     dynText $ fmap eventContact b
   pure e
-
-classMerge :: ElAttrs -> ElAttrs -> ElAttrs
-classMerge a b = Map.fromListWith (\a' b' -> a' <> " " <> b') $ Map.toList a ++ Map.toList b
 
 selectedStyle :: Map Text Text
 selectedStyle = "class" =: "selected"

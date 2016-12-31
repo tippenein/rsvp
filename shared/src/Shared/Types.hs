@@ -83,13 +83,30 @@ instance FromJSON EventResponse where
 instance ToJSON EventResponse where
   toJSON (EventResponse events) = object ["events" .= toJSON events]
 
+data CreateResponse a
+  = CreateResponse
+  { _message :: Status
+  , _db_id :: DbKey
+  , _posted_content :: a
+  } deriving (Eq, Show, Generic)
+
 newtype EventCreateResponse =
-  EventCreateResponse Status
+  EventCreateResponse (CreateResponse Event)
   deriving (Eq, Show, Generic)
 
-instance FromJSON EventCreateResponse where
-  parseJSON (Object v) = EventCreateResponse <$> v .: "status"
-  parseJSON x = typeMismatch "Events" x
+instance FromJSON EventCreateResponse
+instance ToJSON EventCreateResponse
+
+instance (ToJSON a) => ToJSON (CreateResponse a) where
+  toJSON (CreateResponse msg db e) = object [ "content" .= toJSON e
+                                            , "db_id" .= toJSON db
+                                            , "message" .= toJSON msg
+                                            ]
+instance (FromJSON a) => FromJSON (CreateResponse a) where
+  parseJSON (Object v) = CreateResponse <$> v .: "message"
+                                        <*> v .: "db_id"
+                                        <*> v .: "content"
+  parseJSON x = typeMismatch "CreateResponse" x
 
 data Status
   = Success Text
@@ -101,8 +118,6 @@ data Status
 instance ToJSON Status
 instance FromJSON Status
 
-instance ToJSON EventCreateResponse where
-  toJSON (EventCreateResponse status) = object ["status" .= toJSON status]
 
 -- json -----------------------------------------------
 

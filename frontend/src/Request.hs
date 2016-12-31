@@ -29,20 +29,31 @@ data Route
   | UserRoute Shared.DbKey
   deriving (Show, Eq)
 
-type Url = Text
-defaultUrl :: Route -> Url
+mkGET :: Route -> Maybe (Map Text Text)-> XhrRequest ()
+mkGET u Nothing = XhrRequest "GET" (defaultUrl u) def
+mkGET u (Just qp) = XhrRequest "GET" uri def
+  where
+    params = T.intercalate "&" $ map (\(k,v) -> k <> "=" <> v) $ Map.toList qp
+    uri = defaultUrl u <> "?" <> params
+
+defaultUrl :: Route -> Text
 defaultUrl EventsRoute = "http://localhost:8081/events"
 defaultUrl (EventRoute i) = "http://localhost:8081/events/" <> Protolude.show i
 defaultUrl UsersRoute = "http://localhost:8081/users"
 defaultUrl (UserRoute i)= "http://localhost:8081/users" <> Protolude.show i
 
 toPostWithEncode :: (ToJSON a) => Text -> a -> XhrRequest Text
-toPostWithEncode url = toPost url . decodeUtf8 . toStrict . encode
+toPostWithEncode url j =
+  let d = decodeUtf8 $ toStrict $ encode j
+      headerEnc = "Content-type" =: "application/json"
+  in XhrRequest "POST" url $ def { _xhrRequestConfig_headers = headerEnc
+                                 , _xhrRequestConfig_sendData = d
+                                 }
 
 toPost :: Text -> Text -> XhrRequest Text
 toPost url d =
     XhrRequest "POST" url $ def { _xhrRequestConfig_headers = headerUrlEnc
-                                , _xhrRequestConfig_sendData = formEncodeJSON d
+                                , _xhrRequestConfig_sendData = d
                                 }
   where
     headerUrlEnc :: Map Text Text

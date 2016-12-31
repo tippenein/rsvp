@@ -16,7 +16,6 @@ import           System.Environment          (lookupEnv)
 import Control.Monad.Log (Severity(..))
 import qualified Data.List as List
 import GHC.Stats (getGCStatsEnabled)
-import Network.Wai.Middleware.Cors (simpleCors)
 import Network.Wai.Handler.Warp
         (Port, Settings, defaultSettings, runSettings, setBeforeMainLoop,
         setPort)
@@ -98,7 +97,7 @@ runApp config@CliConfig {..} = do
   rec
       let settings = warpSettings config
           middleware r =
-            simpleCors . logging . prometheus defaultPrometheusSettings r "rsvp" $ app
+            logging . prometheus defaultPrometheusSettings r "rsvp" $ app
           logging =
             case accessLogs of
               Disabled -> identity
