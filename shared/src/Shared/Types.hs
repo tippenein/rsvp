@@ -60,7 +60,7 @@ type RsvpEvent = Event
 type DbKey = Int64
 
 newtype UserResponse =
-  UserResponse [User]
+  UserResponse [Entity User]
   deriving (Eq, Show, Generic)
 
 instance FromJSON UserResponse where
@@ -71,7 +71,7 @@ instance ToJSON UserResponse where
   toJSON (UserResponse users) = object ["users" .= toJSON users]
 
 newtype RsvpResponse =
-  RsvpResponse [Rsvp]
+  RsvpResponse [Entity Rsvp]
   deriving (Eq, Show, Generic)
 
 instance FromJSON RsvpResponse where
@@ -97,8 +97,6 @@ entityFromJSON :: (PersistEntity record, FromJSON record)
 entityFromJSON (Object o) = Entity <$> o .: "id" <*> o .: "entity"
 entityFromJSON x = typeMismatch "entityFromJSON: not an object" x
 
--- instance Eq (Key a) where
---   s == t = (fromSqlKey s) == (fromSqlKey t)
 instance (ToJSON a, PersistEntity a) => ToJSON (Entity a) where
   toJSON = entityToJSON
 
@@ -155,9 +153,6 @@ entityToTuple e = (fromSqlKey (entityKey e), entityVal e)
 
 aesonDef :: Options
 aesonDef = defaultOptions { fieldLabelModifier = dropIdentifier }
-
--- instance ToJSON (Entity Event) where
---   toJSON (Entity pid (e@Event{..})) = toJSON e <$> object [ "id" .= pid ]
 
 -- instance FromJSON ContactInfo where
 --   parseJSON = withObject "contact_info" $ \o -> do

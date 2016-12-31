@@ -72,7 +72,7 @@ convertToHandler cfg = ExceptT . Log.withLogging (Config.logLevel cfg) . runExce
 users :: Handler Doc UserResponse
 users = do
   us <- runDb $ selectList [] []
-  pure (UserResponse $ fmap entityVal us)
+  pure (UserResponse us)
 
 getEvent :: Int64 -> Handler Doc Event
 getEvent id = do
@@ -106,5 +106,5 @@ events mname =
 
 rsvps :: Handler Doc RsvpResponse
 rsvps = do
-  es <- runDb $ selectList [] []
-  pure (RsvpResponse $ fmap entityVal es)
+  rs <- runDb $ selectList [] []
+  pure (RsvpResponse rs)
