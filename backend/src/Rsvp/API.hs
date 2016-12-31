@@ -19,8 +19,8 @@ import           Rsvp.API.Internal (HTML)
 type API = RsvpAPI :<|> Raw
 type RsvpAPI =
   Get '[HTML] RootPage :<|>
-  "users" :> Get '[JSON] UserResponse :<|>
-  "rsvps" :> Get '[JSON] RsvpResponse :<|>
+  "users" :> Get '[JSON] (ListResponse User) :<|>
+  "rsvps" :> Get '[JSON] (ListResponse Rsvp) :<|>
   GetEvent:<|>
   ListEvents :<|>
   CreateEvent
@@ -29,7 +29,7 @@ type GetEvent =
   "events" :> Capture "id" Int64 :> Get '[JSON] Event
 
 type ListEvents =
-  "events" :> QueryParam "name" Text :> Get '[JSON] EventResponse
+  "events" :> QueryParam "name" Text :> Get '[JSON] (ListResponse Event)
 
 type CreateEvent =
   "events"

@@ -59,41 +59,13 @@ $(deriveJSON defaultOptions ''EventRsvps)
 type RsvpEvent = Event
 type DbKey = Int64
 
-newtype UserResponse =
-  UserResponse [Entity User]
-  deriving (Eq, Show, Generic)
-
-instance FromJSON UserResponse where
-  parseJSON (Object v) = UserResponse <$> v .: "users"
-  parseJSON x = typeMismatch "Users" x
-
-instance ToJSON UserResponse where
-  toJSON (UserResponse users) = object ["users" .= toJSON users]
-
-newtype RsvpResponse =
-  RsvpResponse [Entity Rsvp]
-  deriving (Eq, Show, Generic)
-
-instance FromJSON RsvpResponse where
-  parseJSON (Object v) = RsvpResponse <$> v .: "rsvps"
-  parseJSON x = typeMismatch "Rsvps" x
-
-instance ToJSON RsvpResponse where
-  toJSON (RsvpResponse rsvps) = object ["rsvps" .= toJSON rsvps]
-
-newtype EventResponse =
-  EventResponse [Entity Event]
-  deriving (Generic)
-
-entityToJSON :: (PersistEntity record, ToJSON record)
-                     => Entity record -> Value
+entityToJSON :: (PersistEntity r, ToJSON r) => Entity r -> Value
 entityToJSON (Entity key value) = object
     [ "id" .= key
     , "entity" .= value
     ]
 
-entityFromJSON :: (PersistEntity record, FromJSON record)
-                       => Value -> Parser (Entity record)
+entityFromJSON :: (PersistEntity r, FromJSON r) => Value -> Parser (Entity r)
 entityFromJSON (Object o) = Entity <$> o .: "id" <*> o .: "entity"
 entityFromJSON x = typeMismatch "entityFromJSON: not an object" x
 
@@ -103,13 +75,6 @@ instance (ToJSON a, PersistEntity a) => ToJSON (Entity a) where
 instance (FromJSON a, PersistEntity a) => FromJSON (Entity a) where
   parseJSON = entityFromJSON
 
-instance FromJSON EventResponse where
-  parseJSON (Object v) = EventResponse <$> v .: "events"
-  parseJSON x = typeMismatch "Events" x
-
-instance ToJSON EventResponse where
-  toJSON (EventResponse events) = object ["events" .= toJSON events]
-
 data CreateResponse a
   = CreateResponse
   { _message :: Status
@@ -117,12 +82,28 @@ data CreateResponse a
   , _posted_content :: a
   } deriving (Eq, Show, Generic)
 
+data ListResponse a
+  = ListResponse
+  { _content :: [Entity a]
+  } deriving (Generic)
+
+type EventsResponse = ListResponse Event
+type UsersResponse = ListResponse User
+type RsvpsResponse = ListResponse Rsvp
+
 newtype EventCreateResponse =
   EventCreateResponse (CreateResponse Event)
   deriving (Eq, Show, Generic)
 
 instance FromJSON EventCreateResponse
 instance ToJSON EventCreateResponse
+
+instance (ToJSON a, PersistEntity a) => ToJSON (ListResponse a) where
+  toJSON (ListResponse ls) = object [ "content" .= toJSON ls ]
+
+instance (FromJSON a, PersistEntity a) => FromJSON (ListResponse a) where
+  parseJSON (Object v) = ListResponse <$> v .: "content"
+  parseJSON x = typeMismatch "List Response" x
 
 instance (ToJSON a) => ToJSON (CreateResponse a) where
   toJSON (CreateResponse msg db e) = object [ "content" .= toJSON e

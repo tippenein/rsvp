@@ -29,7 +29,7 @@ data Action
   | NewUser User
   | CloseStatus
   | ToggleEventForm
-  | EventsPayload EventResponse
+  | EventsPayload (ListResponse RsvpEvent)
   | CreateEventPayload EventCreateResponse
 
 data Model
@@ -55,7 +55,7 @@ update :: Action -> Model -> Model
 update InitialLoad m = m
 update (SelectEvent e) m = m { _selected = pure e }
 update (Query s) m = m { _query = s  }
-update (EventsPayload (EventResponse rsp)) m =
+update (EventsPayload (ListResponse rsp)) m =
   m { _events = Map.fromList $ fmap entityToTuple rsp }
 update CloseStatus m = m { _status = Nothing }
 update NewEvent m = m { _status = pure $ Info "creating new event" }
@@ -95,7 +95,7 @@ view model = div "container" $
       , requestEvents
       ]
 
-searchForm :: MonadWidget t m => m (Event t EventResponse, Event t Action)
+searchForm :: MonadWidget t m => m (Event t EventsResponse, Event t Action)
 searchForm = div "row" $ do
   postBuild <- getPostBuild
   q <- Widget.searchInput
@@ -106,7 +106,7 @@ searchForm = div "row" $ do
                                ]
   rsp :: Event t XhrResponse <- performRequestAsync $
     mkGET EventsRoute <$> fromRequestEvent <$> requestEvents
-  let eventsResponse :: Event t EventResponse = fmapMaybe decodeXhrResponse rsp
+  let eventsResponse :: Event t EventsResponse = fmapMaybe decodeXhrResponse rsp
   pure (eventsResponse, requestEvents)
 
 bodyElement :: MonadWidget t m => m ()

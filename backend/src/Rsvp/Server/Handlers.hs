@@ -69,10 +69,10 @@ convertToHandler
   -> ExceptT ServantErr IO a
 convertToHandler cfg = ExceptT . Log.withLogging (Config.logLevel cfg) . runExceptT . flip runReaderT cfg
 
-users :: Handler Doc UserResponse
+users :: Handler Doc (ListResponse User)
 users = do
   us <- runDb $ selectList [] []
-  pure (UserResponse us)
+  pure (ListResponse us)
 
 getEvent :: Int64 -> Handler Doc Event
 getEvent id = do
@@ -91,20 +91,20 @@ createEvent event = do
                            , _posted_content = event }
   pure $ EventCreateResponse rsp
 
-events :: Maybe Text -> Handler Doc EventResponse
+events :: Maybe Text -> Handler Doc (ListResponse Event)
 events mname =
   case mname of
     Nothing -> do
       es <- runDb $ selectList [] []
-      pure (EventResponse es)
+      pure (ListResponse es)
     Just name -> do
       logInfo (text $ "showing matches to: " <> show name)
       es <- runDb $ select $ from $ \events' -> do
         where_ (events' ^. EventName `like` (%) ++. val name ++. (%))
         pure events'
-      pure (EventResponse es)
+      pure (ListResponse es)
 
-rsvps :: Handler Doc RsvpResponse
+rsvps :: Handler Doc (ListResponse Rsvp)
 rsvps = do
   rs <- runDb $ selectList [] []
-  pure (RsvpResponse rs)
+  pure (ListResponse rs)
