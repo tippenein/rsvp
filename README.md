@@ -1,19 +1,16 @@
-# rsvp
+# RSVP
 
 [![Circle CI](https://circleci.com/gh/tippenein/rsvp/tree/master.svg?style=shield)](https://circleci.com/gh/tippenein/rsvp/tree/master)
 
-rsvp event system
+RSVP event system
+
+System for uploading event posters, locations, and general info and allow RSVP's for each event
 
 Contains:
 
-* rsvp-api -- API definition for rsvp
-* rsvp-server -- Server implementation of the rsvp API
-
-## What it is
-
-## Why you might want it
-
-## How to use it
+* backend -- API definition and server handlers
+* frontend -- Reflex FRP -> js/html/css
+* shared -- shared types for Database entities and Response types
 
 ### Natively
 
