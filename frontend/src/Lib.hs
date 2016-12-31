@@ -24,7 +24,7 @@ import           Prelude ()
 data Action
   = InitialLoad
   | Query Text
-  | SelectEvent Int
+  | SelectEvent DbKey
   | NewEvent
   | NewUser User
   | CloseStatus
@@ -34,11 +34,11 @@ data Action
 
 data Model
   = Model
-  { _events :: Map Int RsvpEvent
+  { _events :: Map DbKey RsvpEvent
   , _query :: Text
   , _status :: Maybe Status
   , _show_event_form :: Bool
-  , _selected :: Maybe Int
+  , _selected :: Maybe DbKey
   } deriving (Show)
 
 initialModel :: Model
@@ -55,7 +55,8 @@ update :: Action -> Model -> Model
 update InitialLoad m = m
 update (SelectEvent e) m = m { _selected = pure e }
 update (Query s) m = m { _query = s  }
-update (EventsPayload (EventResponse rsp)) m = m { _events = Map.fromList $ zip [(1::Int)..] rsp }
+update (EventsPayload (EventResponse rsp)) m =
+  m { _events = Map.fromList $ fmap entityToTuple rsp }
 update CloseStatus m = m { _status = Nothing }
 update NewEvent m = m { _status = pure $ Info "creating new event" }
 update (NewUser _) m = m

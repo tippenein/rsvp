@@ -10,12 +10,16 @@
 {-# LANGUAGE RecordWildCards            #-}
 {-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE TypeFamilies               #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Shared.Types where
 
 import           Data.Aeson
+import           Data.Aeson.TH
 import           Data.Aeson.Types
 import qualified Data.Text as T
+import           Database.Persist
+import           Database.Persist.Sql (fromSqlKey, SqlBackend)
 import qualified Prelude
 
 import           Protolude
@@ -24,28 +28,33 @@ import Database.Persist.TH (
   share, sqlSettings)
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
-User json sql=users
+User sql=users
     name Text
     email Text
     deriving Eq Show
 
-Rsvp json sql=rsvps
+Rsvp sql=rsvps
     event_id EventId
     name Text
     contact Text
     deriving Eq Show
 
-EventRsvps json sql=event_rsvps
+EventRsvps sql=event_rsvps
     event_id EventId
     rsvp_id RsvpId
     deriving Eq Show
 
-Event json sql=events
+Event sql=events
     creator_id UserId
     name Text
     contact Text
     deriving Eq Show
 |]
+
+$(deriveJSON defaultOptions ''Event)
+$(deriveJSON defaultOptions ''User)
+$(deriveJSON defaultOptions ''Rsvp)
+$(deriveJSON defaultOptions ''EventRsvps)
 
 type RsvpEvent = Event
 type DbKey = Int64
@@ -73,8 +82,28 @@ instance ToJSON RsvpResponse where
   toJSON (RsvpResponse rsvps) = object ["rsvps" .= toJSON rsvps]
 
 newtype EventResponse =
-  EventResponse [Event]
-  deriving (Eq, Show, Generic)
+  EventResponse [Entity Event]
+  deriving (Generic)
+
+entityToJSON :: (PersistEntity record, ToJSON record)
+                     => Entity record -> Value
+entityToJSON (Entity key value) = object
+    [ "id" .= key
+    , "entity" .= value
+    ]
+
+entityFromJSON :: (PersistEntity record, FromJSON record)
+                       => Value -> Parser (Entity record)
+entityFromJSON (Object o) = Entity <$> o .: "id" <*> o .: "entity"
+entityFromJSON x = typeMismatch "entityFromJSON: not an object" x
+
+-- instance Eq (Key a) where
+--   s == t = (fromSqlKey s) == (fromSqlKey t)
+instance (ToJSON a, PersistEntity a) => ToJSON (Entity a) where
+  toJSON = entityToJSON
+
+instance (FromJSON a, PersistEntity a) => FromJSON (Entity a) where
+  parseJSON = entityFromJSON
 
 instance FromJSON EventResponse where
   parseJSON (Object v) = EventResponse <$> v .: "events"
@@ -120,6 +149,9 @@ instance FromJSON Status
 
 
 -- json -----------------------------------------------
+
+entityToTuple :: (ToBackendKey SqlBackend a) => Entity a -> (DbKey, a)
+entityToTuple e = (fromSqlKey (entityKey e), entityVal e)
 
 aesonDef :: Options
 aesonDef = defaultOptions { fieldLabelModifier = dropIdentifier }

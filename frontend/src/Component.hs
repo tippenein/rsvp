@@ -57,14 +57,13 @@ bootstrapFileInput = do
     pure =<< fileInput def
   pure $ _fileInput_value a
 
-eventListing :: MonadWidget t m => Dynamic t (Map Int RsvpEvent) -> Dynamic t (Maybe Int) -> m (Event t Int)
+eventListing :: MonadWidget t m => Dynamic t (Map DbKey RsvpEvent) -> Dynamic t (Maybe DbKey) -> m (Event t DbKey)
 eventListing eventMap selectedEvent = do
   eventSelected <- divClass "row" $ do
     bs' <- divClass "event-list"$ do
       bs <- elClass "ul" "list-unstyle" $ Widget.selectableList selectedEvent eventMap $ \sel p ->
         domEvent Click <$> eventEl sel p
       pure bs
-    -- display $ zipDynWith maybeLookup selectedEvent eventMap
     pure bs'
   pure eventSelected
 
@@ -130,7 +129,7 @@ formGroup t i desc = do
 eventEl :: (MonadWidget t m)
    => Dynamic t Bool
    -> Dynamic t RsvpEvent
-   -> m(El t)
+   -> m (El t)
 eventEl sel b = do
   let commonAttrs = constDyn $ "class" =: "event-wrap"
   let attrs = fmap (`Common.monoidGuard` selectedStyle) sel

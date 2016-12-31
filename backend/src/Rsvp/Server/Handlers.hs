@@ -96,13 +96,13 @@ events mname =
   case mname of
     Nothing -> do
       es <- runDb $ selectList [] []
-      pure (EventResponse $ fmap entityVal es)
+      pure (EventResponse es)
     Just name -> do
       logInfo (text $ "showing matches to: " <> show name)
       es <- runDb $ select $ from $ \events' -> do
         where_ (events' ^. EventName `like` (%) ++. val name ++. (%))
         pure events'
-      pure (EventResponse $ fmap entityVal es)
+      pure (EventResponse es)
 
 rsvps :: Handler Doc RsvpResponse
 rsvps = do
