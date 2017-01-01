@@ -59,12 +59,9 @@ bootstrapFileInput = do
 
 eventListing :: MonadWidget t m => Dynamic t (Map DbKey RsvpEvent) -> Dynamic t (Maybe DbKey) -> m (Event t DbKey)
 eventListing eventMap selectedEvent = do
-  eventSelected <- divClass "row" $ do
-    bs' <- divClass "event-list"$ do
-      bs <- elClass "ul" "list-unstyle" $ Widget.selectableList selectedEvent eventMap $ \sel p ->
-        domEvent Click <$> eventEl sel p
-      pure bs
-    pure bs'
+  eventSelected <- divClass "row" $
+    elClass "div" "event-listing" $ Widget.selectableList selectedEvent eventMap $ \sel p ->
+      domEvent Click <$> eventEl sel p
   pure eventSelected
 
 flashStatus :: MonadWidget t m => Dynamic t (Maybe Status) -> m (Event t ())
@@ -131,12 +128,12 @@ eventEl :: (MonadWidget t m)
    -> Dynamic t RsvpEvent
    -> m (El t)
 eventEl sel b = do
-  let commonAttrs = constDyn $ "class" =: "event-wrap"
+  let commonAttrs = constDyn $ "class" =: "panel panel-default event-wrap"
   let attrs = fmap (`Common.monoidGuard` selectedStyle) sel
-  (e,_) <- elDynAttr' "li" (zipDynWith classMerge attrs commonAttrs) $ do
-    dynText $ fmap eventName b
-    text " - "
-    dynText $ fmap eventContact b
+  (e,_) <- elDynAttr' "div" (zipDynWith classMerge attrs commonAttrs) $ do
+    elClass "div" "panel-heading" $ dynText $ fmap eventName b
+    elClass "div" "panel-body" $ dynText $ fmap eventContact b
+    Widget.placeholderImage 300 300
   pure e
 
 selectedStyle :: Map Text Text

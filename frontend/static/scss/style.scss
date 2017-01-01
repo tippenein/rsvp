@@ -34,6 +34,16 @@ input[type="text"] {
 .event-form {
     border-bottom: dashed 1px $gray-med;
 }
+
+.event-listing {
+    padding: 2px;
+}
+.event-wrap {
+    display: inline-block;
+    margin: 0.25em;
+    height: 100%;
+    width: auto;
+}
 .selected {
     border: solid 1px #4748f9;
 }

@@ -59,7 +59,7 @@ instance MimeRender HTML RootPage where
             <script language="javascript" src="out.js"></script>
             <link rel="stylesheet" type="text/css" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.6.3/css/font-awesome.min.css">
             <link rel="stylesheet" type="text/css" href="http://fonts.googleapis.com/css?family=Lato">
-            <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.0.0-alpha.5/css/bootstrap.min.css">
+            <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/css/bootstrap.min.css">
             <link rel="stylesheet" type="text/css" href="css/style.css">
           </head>
           <body>

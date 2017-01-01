@@ -48,7 +48,8 @@ stylesheetImports :: MonadWidget t m => m ()
 stylesheetImports = do
   styleSheet "https://maxcdn.bootstrapcdn.com/font-awesome/4.6.3/css/font-awesome.min.css"
   styleSheet "http://fonts.googleapis.com/css?family=Lato"
-  styleSheet "https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.0.0-alpha.5/css/bootstrap.min.css"
+
+  styleSheet "https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/css/bootstrap.min.css"
   styleSheet "css/style.css"
   where
     styleSheet _link = elAttr "link" (Map.fromList [
@@ -63,24 +64,14 @@ readableInput conf = do
     pure $ fmapMaybe readMaybe $ T.unpack <$> _textInput_input c
 
 
--- buttonWith :: DomBuilder t m => String -> Map.Map String String -> m (Event t ())
-buttonWith title attrs = do
-  (e,_) <- elAttr' "a" attrs $ text title
-  pure $ domEvent Click e
-
--- buttonWithDyn :: DomBuilder t m => String -> Dynamic t (Map.Map String String) -> m (Event t ())
-buttonWithDyn title attrs = do
-  (e,_) <- elDynAttr' "button" attrs $ text title
-  pure $ domEvent Click e
-
 maybeButton :: MonadWidget t m
             => Dynamic t Bool -- ^ Is the button enabled?
             -> Text -- ^ Static button label
             -> m (Event t ())
 maybeButton enabled label = do
     let attrs = ffor enabled $ \e -> monoidGuard (not e) $ "disabled" =: "disabled"
-    (btn, _) <- elDynAttr' "button" attrs $ text label
-    pure $ domEvent Click btn
+    (b, _) <- elDynAttr' "button" attrs $ text label
+    pure $ domEvent Click b
 
 datePicker :: MonadWidget t m
            => Dynamic t Bool -- ^ Widget enabled?
@@ -135,3 +126,11 @@ checkboxAttrs name v = def & attributes .~ constDyn (
                         , "value" =: v
                         ]
                 )
+
+-- | Show a placeholder image given Height and Width
+placeholderImage :: DomBuilder t m =>
+               Int -> -- | width
+               Int -> -- | height
+               m ()
+placeholderImage w h = elAttr "img" ("src" =: s) blank
+  where s = "http://placehold.it/" <> show h <> "x" <> show w
