@@ -11,13 +11,19 @@ module Widget where
 import           Reflex
 import           Reflex.Dom
 
-import qualified Data.Text as T
 import           Data.Default (Default)
 import qualified Data.Map as Map
 import           Data.Maybe
 import           Data.Monoid
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as T
+
+import qualified Data.ByteString.Base64 as B64
 import           Data.Time.Clock (UTCTime)
 import           Data.Time.Format (defaultTimeLocale, parseTimeM)
+import qualified GHCJS.DOM.JSFFI.Generated.FileReader as FileReader
+import qualified GHCJS.Marshal as Marshal
+import qualified GHCJS.DOM.EventM as EventM
 
 import           Common
 import           Protolude hiding ((&))
@@ -126,6 +132,56 @@ checkboxAttrs name v = def & attributes .~ constDyn (
                         , "value" =: v
                         ]
                 )
+
+fileInputAttr :: MonadWidget t m => Text -> ElAttrs -> m (Event t ByteString)
+fileInputAttr t attrs = do
+  text t
+  elAttr "label" attrs $ fileLoader def
+
+fileLoader :: MonadWidget t m => FileInputConfig t -> m (Event t ByteString)
+fileLoader cfg = do
+  files <- fmapMaybe listToMaybe . updated . value <$> fileInput cfg
+  reader <- liftIO FileReader.newFileReader
+  performEvent_ $ ffor files $ \f -> liftIO $
+    FileReader.readAsDataURL reader (Just f)
+  wrapDomEvent reader (`EventM.on` FileReader.load) $ do
+    res <- liftIO $ Marshal.fromJSValUnchecked =<< FileReader.getResult reader
+    let Right contents = B64.decode (T.encodeUtf8 $ snd $ T.breakOnEnd "base64," res)
+    return contents
+
+-- fileToByteString :: Maybe G.File -> Maybe ByteString
+-- fileToByteString mfile = do
+--   fr <- G.newFileReaderSync
+--   abuff <- G.readAsArrayBuffer fr mfile
+--   pure $ Buffer.toByteString 0 Nothing $ Buffer.createFromArrayBuffer abuff
+--   pure mbytestring
+
+bootstrapFileInput :: MonadWidget t m => Text -> m (Event t ByteString)
+bootstrapFileInput t = fileInputAttr t ("class" =: "btn btn-default btn-file")
+
+-- XXX: use a FormGroupConfig to set up all possible options
+formGroup :: MonadWidget t m
+          => Text -- email | text | phone
+          -> Text -- id
+          -> Text -- full descript
+          -> m (Dynamic t Text)
+formGroup t i desc = do
+  v <- divClass "form-group" $ do
+    -- elAttr "label" ("for" =: i) $ text desc
+    let attrs = constDyn $ mconcat
+                [ "type" =: t
+                , "class" =: "form-control"
+                , "id" =: i
+                -- , "aria-describedby" =: "emailHelp"
+                , "placeholder" =: desc
+                ]
+    g <- textInput $ def & textInputConfig_attributes .~ attrs
+    -- elAttr "small" ("id" =: "emailHelp" <> "class" =: "form-text text-muted") $
+    --   text "We'll never share your email with anyone else."
+    pure g
+
+  pure $ _textInput_value v
+
 
 -- | Show a placeholder image given Height and Width
 placeholderImage :: DomBuilder t m =>

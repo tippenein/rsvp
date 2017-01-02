@@ -23,5 +23,7 @@ library:
   dependencies:
     - aeson
     - time
+    - base64-bytestring
+    - bytestring
     - persistent
     - persistent-template

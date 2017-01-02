@@ -1,12 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+
+-- | Component represents business-logic specific dom elements
 module Component where
 
-import           Control.Lens hiding (view, element)
 import qualified Data.Map as Map
 import qualified Data.Text as T
 import           Database.Persist.Sql (toSqlKey)
-import           GHCJS.DOM.Types (File)
 import           Reflex.Dom
 ------------------------------------
 import           Common
@@ -36,26 +36,19 @@ mkEventForm = do
   let attrs = mconcat ["class" =: "form event-form"
                       , "action" =: "/events"
                       , "method" =: "post"
-                      -- , "data-remote" =: "true"
                       ]
-  (submitEvent, cancelEvent, nameDyn, contactDyn) <- elAttr "form" attrs $ do
-    nameDyn <- formGroup "text" "eventName" "Event Name"
-    contactDyn <- formGroup "text" "contactInfo" "Contact Info"
-    files <- bootstrapFileInput
+  (submitEvent, cancelEvent, nameDyn, contactDyn, fileDyn) <- elAttr "form" attrs $ do
+    nameDyn <- Widget.formGroup "text" "eventName" "Event Name"
+    contactDyn <- Widget.formGroup "text" "contactInfo" "Contact Info"
+    fileEvent <- Widget.bootstrapFileInput "Event Logo"
+    fileDyn <- holdDyn Nothing (Just <$> fileEvent)
 
     cancelButton <- btn "cancel"
     submitButton <- btnClass "submit" "btn btn-primary"
-    pure (submitButton, cancelButton, nameDyn, contactDyn)
+    pure (submitButton, cancelButton, nameDyn, contactDyn, fileDyn)
 
-  let e = Shared.Event (toSqlKey 1) <$> nameDyn <*> contactDyn
+  let e = Shared.Event (toSqlKey 1) <$> nameDyn <*> contactDyn <*> fileDyn
   pure (e, submitEvent, cancelEvent)
-
-bootstrapFileInput :: MonadWidget t m => m (Dynamic t [File])
-bootstrapFileInput = do
-  text "Event Image"
-  a <- elClass "label" "btn btn-default btn-file" $
-    pure =<< fileInput def
-  pure $ _fileInput_value a
 
 eventListing :: MonadWidget t m => Dynamic t (Map DbKey RsvpEvent) -> Dynamic t (Maybe DbKey) -> m (Event t DbKey)
 eventListing eventMap selectedEvent = do
@@ -102,26 +95,6 @@ flash status =
     c <- btnAttr "×" attr
     text $ show status
     pure c
-
--- XXX: use a FormGroupConfig to set up all possible options
-formGroup :: MonadWidget t m
-          => Text -- email | text | phone
-          -> Text -- id
-          -> Text -- full descript
-          -> m (Dynamic t Text)
-formGroup t i desc = do
-  v <- divClass "form-group" $ do
-    -- elAttr "label" ("for" =: i) $ text desc
-    let attrs = constDyn $ mconcat [ "type" =: t
-                     , "class" =: "form-control"
-                     , "id" =: i
-                     -- , "aria-describedby" =: "emailHelp"
-                     , "placeholder" =: desc
-                     ]
-    g <- textInput $ def & textInputConfig_attributes .~ attrs
-    -- elAttr "small" ("id" =: "emailHelp" <> "class" =: "form-text text-muted") $ text "We'll never share your email with anyone else."
-    pure g
-  pure $ _textInput_value v
 
 eventEl :: (MonadWidget t m)
    => Dynamic t Bool

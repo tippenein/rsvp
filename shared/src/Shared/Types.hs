@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric              #-}
+{-# LANGUAGE DeriveDataTypeable         #-}
 {-# LANGUAGE EmptyDataDecls             #-}
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE FlexibleInstances          #-}
@@ -17,7 +18,9 @@ module Shared.Types where
 import           Data.Aeson
 import           Data.Aeson.TH
 import           Data.Aeson.Types
+import qualified Data.ByteString.Base64 as B64
 import qualified Data.Text as T
+import qualified Data.Text.Encoding as T
 import           Database.Persist
 import           Database.Persist.Sql (fromSqlKey, SqlBackend)
 import qualified Prelude
@@ -48,16 +51,42 @@ Event sql=events
     creator_id UserId
     name Text
     contact Text
+    image ByteString Maybe
     deriving Eq Show
 |]
 
-$(deriveJSON defaultOptions ''Event)
+-- $(deriveJSON defaultOptions ''Event)
 $(deriveJSON defaultOptions ''User)
 $(deriveJSON defaultOptions ''Rsvp)
 $(deriveJSON defaultOptions ''EventRsvps)
 
 type RsvpEvent = Event
 type DbKey = Int64
+
+instance ToJSON Event where
+  toJSON (Event c name contact image) = object [ "creator_id" .= toJSON c
+                                               , "name" .= toJSON name
+                                               , "contact" .= toJSON contact
+                                               , "image" .= fmap (T.decodeUtf8 . B64.encode) image
+                                               ]
+instance FromJSON Event where
+  parseJSON (Object v) = Event <$> v .: "creator_id"
+                               <*> v .: "name"
+                               <*> v .: "contact"
+                               <*> pure (Just "image") -- (eitherToMaybe . B64.decode . T.encodeUtf8 <$> v .: "image")
+  parseJSON x = typeMismatch "Event" x
+
+eitherToMaybe :: Either a b -> Maybe b
+eitherToMaybe = either (const Nothing) Just
+
+-- newtype ByteString64 = ByteString64 { unByteString64 :: ByteString }
+--     deriving (Eq, Read, Show, Data, Typeable, Ord, Generic, Hashable, Serialize)
+
+-- instance ToJSON ByteString64 where
+--   toJSON (ByteString64 bs) = toJSON (B64.encode bs)
+
+-- instance FromJSON ByteString64 where
+--   parseJSON o = parseJSON o >>= either Prelude.fail (pure . ByteString64) . B64.decode
 
 entityToJSON :: (PersistEntity r, ToJSON r) => Entity r -> Value
 entityToJSON (Entity key value) = object
