@@ -25,5 +25,8 @@ library:
     - time
     - base64-bytestring
     - bytestring
+    - hashable
+    - cereal
+    - binary
     - persistent
     - persistent-template

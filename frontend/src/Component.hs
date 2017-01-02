@@ -4,8 +4,11 @@
 -- | Component represents business-logic specific dom elements
 module Component where
 
+-- import           Data.ByteString
+-- import qualified Data.ByteString.Base64 as B64
 import qualified Data.Map as Map
 import qualified Data.Text as T
+import qualified Data.Text.Encoding as T
 import           Database.Persist.Sql (toSqlKey)
 import           Reflex.Dom
 ------------------------------------
@@ -53,8 +56,8 @@ mkEventForm = do
 eventListing :: MonadWidget t m => Dynamic t (Map DbKey RsvpEvent) -> Dynamic t (Maybe DbKey) -> m (Event t DbKey)
 eventListing eventMap selectedEvent = do
   eventSelected <- divClass "row" $
-    elClass "div" "event-listing" $ Widget.selectableList selectedEvent eventMap $ \sel p ->
-      domEvent Click <$> eventEl sel p
+    elClass "div" "event-listing" $ Widget.selectableList selectedEvent eventMap $ \sel rsvp_event ->
+      domEvent Click <$> eventEl sel rsvp_event
   pure eventSelected
 
 flashStatus :: MonadWidget t m => Dynamic t (Maybe Status) -> m (Event t ())
@@ -100,14 +103,24 @@ eventEl :: (MonadWidget t m)
    => Dynamic t Bool
    -> Dynamic t RsvpEvent
    -> m (El t)
-eventEl sel b = do
+eventEl sel rsvp_event = do
   let commonAttrs = constDyn $ "class" =: "panel panel-default event-wrap"
   let attrs = fmap (`Common.monoidGuard` selectedStyle) sel
   (e,_) <- elDynAttr' "div" (zipDynWith classMerge attrs commonAttrs) $ do
-    elClass "div" "panel-heading" $ dynText $ fmap eventName b
-    elClass "div" "panel-body" $ dynText $ fmap eventContact b
-    Widget.placeholderImage 300 300
+    elClass "div" "panel-heading" $ dynText $ fmap eventName rsvp_event
+    elClass "div" "panel-body" $ dynText $ fmap eventContact rsvp_event
+    elClass "div" "img-wrapper" $ dyn $ fmap imgBinEl rsvp_event
   pure e
+
+imgSrcFrom :: RsvpEvent -> Maybe Text
+imgSrcFrom rsvp_event = case eventImage rsvp_event of
+  Nothing -> Nothing
+  Just i -> Just $ "data:image/jpg;base64," <> T.decodeUtf8 i
+
+imgBinEl :: (MonadWidget t m) => RsvpEvent -> m ()
+imgBinEl rsvp_event = case imgSrcFrom rsvp_event of
+  Nothing -> Widget.placeholderImage 300 300
+  Just imgsrc -> elAttr "img" ("src" =: imgsrc) blank
 
 selectedStyle :: Map Text Text
 selectedStyle = "class" =: "selected"

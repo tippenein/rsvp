@@ -64,9 +64,12 @@ tests:
     dependencies:
       - backend
       - logging-effect
+      - base64-bytestring
+      - bytestring
       - QuickCheck
       - quickcheck-instances
       - servant-quickcheck
       - persistent
       - tasty
       - tasty-hspec
+      - tasty-quickcheck

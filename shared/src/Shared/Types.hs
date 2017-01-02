@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveGeneric              #-}
 {-# LANGUAGE DeriveDataTypeable         #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE EmptyDataDecls             #-}
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE FlexibleInstances          #-}
@@ -15,6 +16,14 @@
 
 module Shared.Types where
 
+import Data.Binary              (Binary)
+import Data.ByteString (ByteString)
+import Data.ByteString.Base64   as Base64
+import Data.Data                (Data, Typeable)
+import Data.Hashable            (Hashable)
+import Data.Serialize           (Serialize)
+import Data.String              (IsString (..))
+import GHC.Generics             (Generic)
 import           Data.Aeson
 import           Data.Aeson.TH
 import           Data.Aeson.Types
@@ -29,6 +38,26 @@ import           Protolude
 import Database.Persist.TH (
   mkMigrate, mkPersist, persistLowerCase,
   share, sqlSettings)
+
+-- | Aeson serialisable bytestring. Uses base64 encoding.
+newtype ByteString64 = ByteString64 { getByteString64 :: ByteString }
+    deriving (Eq, Read, Show, Ord, Data, Typeable, Generic, Hashable, Serialize, Binary)
+
+-- | Get base64 encode bytestring
+getEncodedByteString64 :: ByteString64 -> ByteString
+getEncodedByteString64 = Base64.encode . getByteString64
+
+instance ToJSON ByteString64 where
+    toJSON = toJSON . T.decodeLatin1 . getEncodedByteString64
+
+instance FromJSON ByteString64 where
+    parseJSON = withText "ByteString" $
+        pure . ByteString64 . decodeLenient . encodeUtf8
+
+instance IsString ByteString64 where
+   fromString = ByteString64 . fromString
+
+instance NFData ByteString64
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 User sql=users
@@ -55,6 +84,12 @@ Event sql=events
     deriving Eq Show
 |]
 
+encodeToText :: ByteString -> Text
+encodeToText = T.decodeUtf8 . B64.encode
+
+decodeFromText :: (Monad m) => Text -> m ByteString
+decodeFromText = either Prelude.fail return . B64.decode . T.encodeUtf8
+
 -- $(deriveJSON defaultOptions ''Event)
 $(deriveJSON defaultOptions ''User)
 $(deriveJSON defaultOptions ''Rsvp)
@@ -67,26 +102,17 @@ instance ToJSON Event where
   toJSON (Event c name contact image) = object [ "creator_id" .= toJSON c
                                                , "name" .= toJSON name
                                                , "contact" .= toJSON contact
-                                               , "image" .= fmap (T.decodeUtf8 . B64.encode) image
+                                               , "image" .= fmap encodeToText image
                                                ]
 instance FromJSON Event where
   parseJSON (Object v) = Event <$> v .: "creator_id"
                                <*> v .: "name"
                                <*> v .: "contact"
-                               <*> pure (Just "image") -- (eitherToMaybe . B64.decode . T.encodeUtf8 <$> v .: "image")
+                               <*> pure (Just "image") -- ((v .: "image") >>= decodeFromText)
   parseJSON x = typeMismatch "Event" x
 
 eitherToMaybe :: Either a b -> Maybe b
 eitherToMaybe = either (const Nothing) Just
-
--- newtype ByteString64 = ByteString64 { unByteString64 :: ByteString }
---     deriving (Eq, Read, Show, Data, Typeable, Ord, Generic, Hashable, Serialize)
-
--- instance ToJSON ByteString64 where
---   toJSON (ByteString64 bs) = toJSON (B64.encode bs)
-
--- instance FromJSON ByteString64 where
---   parseJSON o = parseJSON o >>= either Prelude.fail (pure . ByteString64) . B64.decode
 
 entityToJSON :: (PersistEntity r, ToJSON r) => Entity r -> Value
 entityToJSON (Entity key value) = object

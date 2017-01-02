@@ -92,10 +92,13 @@ test-suite rsvp-api-tests
     , shared
     , backend
     , logging-effect
+    , base64-bytestring
+    , bytestring
     , QuickCheck
     , quickcheck-instances
     , servant-quickcheck
     , persistent
     , tasty
     , tasty-hspec
+    , tasty-quickcheck
   default-language: Haskell2010
