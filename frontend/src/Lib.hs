@@ -7,7 +7,6 @@
 
 module Lib where
 
-import qualified Data.Text as T
 import qualified Data.Map as Map
 import           Reflex
 import           Reflex.Dom

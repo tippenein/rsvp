@@ -1,6 +1,4 @@
 {-# LANGUAGE DeriveGeneric              #-}
-{-# LANGUAGE DeriveDataTypeable         #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE EmptyDataDecls             #-}
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE FlexibleInstances          #-}
@@ -16,14 +14,6 @@
 
 module Shared.Types where
 
-import Data.Binary              (Binary)
-import Data.ByteString (ByteString)
-import Data.ByteString.Base64   as Base64
-import Data.Data                (Data, Typeable)
-import Data.Hashable            (Hashable)
-import Data.Serialize           (Serialize)
-import Data.String              (IsString (..))
-import GHC.Generics             (Generic)
 import           Data.Aeson
 import           Data.Aeson.TH
 import           Data.Aeson.Types
@@ -32,32 +22,12 @@ import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import           Database.Persist
 import           Database.Persist.Sql (fromSqlKey, SqlBackend)
+import           Database.Persist.TH ( mkMigrate, mkPersist, persistLowerCase
+                                     , share, sqlSettings
+                                     )
 import qualified Prelude
 
 import           Protolude
-import Database.Persist.TH (
-  mkMigrate, mkPersist, persistLowerCase,
-  share, sqlSettings)
-
--- | Aeson serialisable bytestring. Uses base64 encoding.
-newtype ByteString64 = ByteString64 { getByteString64 :: ByteString }
-    deriving (Eq, Read, Show, Ord, Data, Typeable, Generic, Hashable, Serialize, Binary)
-
--- | Get base64 encode bytestring
-getEncodedByteString64 :: ByteString64 -> ByteString
-getEncodedByteString64 = Base64.encode . getByteString64
-
-instance ToJSON ByteString64 where
-    toJSON = toJSON . T.decodeLatin1 . getEncodedByteString64
-
-instance FromJSON ByteString64 where
-    parseJSON = withText "ByteString" $
-        pure . ByteString64 . decodeLenient . encodeUtf8
-
-instance IsString ByteString64 where
-   fromString = ByteString64 . fromString
-
-instance NFData ByteString64
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 User sql=users
@@ -84,13 +54,6 @@ Event sql=events
     deriving Eq Show
 |]
 
-encodeToText :: ByteString -> Text
-encodeToText = T.decodeUtf8 . B64.encode
-
-decodeFromText :: (Monad m) => Text -> m ByteString
-decodeFromText = either Prelude.fail return . B64.decode . T.encodeUtf8
-
--- $(deriveJSON defaultOptions ''Event)
 $(deriveJSON defaultOptions ''User)
 $(deriveJSON defaultOptions ''Rsvp)
 $(deriveJSON defaultOptions ''EventRsvps)
@@ -98,6 +61,16 @@ $(deriveJSON defaultOptions ''EventRsvps)
 type RsvpEvent = Event
 type DbKey = Int64
 
+
+encodeToText :: ByteString -> Text
+encodeToText = T.decodeUtf8 . B64.encode
+
+decodeFromText :: (Monad m) => Text -> m ByteString
+decodeFromText t = case B64.decode $ T.encodeUtf8 t of
+  Left a -> Prelude.error a
+  Right bs -> pure bs
+
+-- $(deriveJSON defaultOptions ''Event)
 instance ToJSON Event where
   toJSON (Event c name contact image) = object [ "creator_id" .= toJSON c
                                                , "name" .= toJSON name
@@ -108,7 +81,7 @@ instance FromJSON Event where
   parseJSON (Object v) = Event <$> v .: "creator_id"
                                <*> v .: "name"
                                <*> v .: "contact"
-                               <*> pure (Just "image") -- ((v .: "image") >>= decodeFromText)
+                               <*> ((v .: "image") >>= pure . decodeFromText)
   parseJSON x = typeMismatch "Event" x
 
 eitherToMaybe :: Either a b -> Maybe b
@@ -137,10 +110,7 @@ data CreateResponse a
   , _posted_content :: a
   } deriving (Eq, Show, Generic)
 
-data ListResponse a
-  = ListResponse
-  { _content :: [Entity a]
-  } deriving (Generic)
+newtype ListResponse a = ListResponse { _content :: [Entity a] } deriving (Generic)
 
 type EventsResponse = ListResponse Event
 type UsersResponse = ListResponse User

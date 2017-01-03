@@ -15,6 +15,7 @@ type ElAttrs = Map Text Text
 classMerge :: ElAttrs -> ElAttrs -> ElAttrs
 classMerge a b = Map.fromListWith (\a' b' -> a' <> " " <> b') $ Map.toList a ++ Map.toList b
 
+
 div :: MonadWidget t m => Text -> m a -> m a
 div = elClass "div"
 
@@ -26,7 +27,7 @@ widgetHoldHelper
     -> m (Dynamic t b)
 widgetHoldHelper f eDef e = widgetHold (f eDef) (f <$> e)
 
-maybeLookup :: Maybe Int -> Map Int a -> Maybe a
+maybeLookup :: (Ord k) => Maybe Int -> Map k v -> Maybe v
 maybeLookup midx m = case midx of
   Nothing -> Nothing
   Just idx -> Map.lookup idx m

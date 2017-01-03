@@ -6,9 +6,9 @@ module Component where
 
 -- import           Data.ByteString
 -- import qualified Data.ByteString.Base64 as B64
+import           Data.Default
 import qualified Data.Map as Map
 import qualified Data.Text as T
-import qualified Data.Text.Encoding as T
 import           Database.Persist.Sql (toSqlKey)
 import           Reflex.Dom
 ------------------------------------
@@ -112,15 +112,37 @@ eventEl sel rsvp_event = do
     elClass "div" "img-wrapper" $ dyn $ fmap imgBinEl rsvp_event
   pure e
 
+data EventImageConfig = EventImageConfig
+  { ei_height :: Int
+  , ei_width :: Int
+  , ei_img_src :: Maybe Text
+  }
+
+instance Default EventImageConfig where
+  def = EventImageConfig
+    { ei_width = 300
+    , ei_height = 300
+    , ei_img_src = Nothing }
+
+imgBinEl :: (MonadWidget t m) => RsvpEvent -> m ()
+imgBinEl rsvp_event = do
+  let attrs = eventImageAttrs $ def { ei_img_src = imgSrcFrom rsvp_event }
+  elAttr "img" attrs blank
+
+eventImageAttrs :: EventImageConfig -> ElAttrs
+eventImageAttrs conf =
+  let w = ei_width conf
+      h = ei_height conf
+      src = fromMaybe (Widget.placeholderImageLocation w h) (ei_img_src conf)
+  in
+    mconcat [ "src" =: src
+            , "width" =: show w
+            , "height" =: show h ]
+
 imgSrcFrom :: RsvpEvent -> Maybe Text
 imgSrcFrom rsvp_event = case eventImage rsvp_event of
   Nothing -> Nothing
-  Just i -> Just $ "data:image/jpg;base64," <> T.decodeUtf8 i
-
-imgBinEl :: (MonadWidget t m) => RsvpEvent -> m ()
-imgBinEl rsvp_event = case imgSrcFrom rsvp_event of
-  Nothing -> Widget.placeholderImage 300 300
-  Just imgsrc -> elAttr "img" ("src" =: imgsrc) blank
+  Just i -> Just $ "data:image/jpg;base64," <> encodeToText i
 
 selectedStyle :: Map Text Text
 selectedStyle = "class" =: "selected"

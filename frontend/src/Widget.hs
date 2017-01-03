@@ -184,9 +184,8 @@ formGroup t i desc = do
 
 
 -- | Show a placeholder image given Height and Width
-placeholderImage :: DomBuilder t m =>
+placeholderImageLocation ::
                Int -> -- | width
                Int -> -- | height
-               m ()
-placeholderImage w h = elAttr "img" ("src" =: s) blank
-  where s = "http://placehold.it/" <> show h <> "x" <> show w
+               Text
+placeholderImageLocation w h = "http://placehold.it/" <> show h <> "x" <> show w

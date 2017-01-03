@@ -68,8 +68,8 @@ formEncodeJSON a = case toJSON a of
 -- | URL encodes a map of key-value pairs.
 formEncode :: Map Text ByteString -> Text
 formEncode m =
-    T.intercalate "&" $
-      map (\(k,v) -> k <> "=" <> encodeToText v) $ Map.toList m
+  T.intercalate "&" $
+    map (\(k,v) -> k <> "=" <> encodeToText v) $ Map.toList m
   where
     encodeToText :: ByteString -> Text
     encodeToText = toS . urlEncode True . toS
