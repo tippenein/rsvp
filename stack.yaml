@@ -16,7 +16,7 @@
 # resolver:
 #  name: custom-snapshot
 #  location: "./custom-snapshot.yaml"
-resolver: nightly-2016-12-31
+resolver: lts-7.14
 
 # User packages to be built.
 # Various formats can be used as shown in the example below.
@@ -50,6 +50,7 @@ extra-deps:
 - hspec-discover-2.2.4
 - hspec-expectations-0.7.2
 - http-api-data-0.2.4
+- logging-effect-1.1.1
 - insert-ordered-containers-0.1.0.1
 - persistent-2.2.4.1
 - persistent-postgresql-2.2.2
