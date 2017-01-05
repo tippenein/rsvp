@@ -9,33 +9,34 @@ module Rsvp.Server
   , startApp
   ) where
 
-import Protolude
-import qualified Prelude
-
-import           System.Environment          (lookupEnv)
-import Control.Monad.Log (Severity(..))
+import           System.Environment (lookupEnv)
+import           Control.Monad.Log (Severity(..))
 import qualified Data.List as List
-import GHC.Stats (getGCStatsEnabled)
-import Network.Wai.Handler.Warp
+import           GHC.Stats (getGCStatsEnabled)
+import           Network.Wai.Handler.Warp
         (Port, Settings, defaultSettings, runSettings, setBeforeMainLoop,
         setPort)
 import qualified Network.Wai.Middleware.RequestLogger as RL
-import Options.Applicative
+import           Options.Applicative
        (ParserInfo, auto, eitherReader, execParser, fullDesc, header,
         help, helper, info, long, metavar, option, progDesc, switch, value)
 import qualified Prometheus as Prom
 import qualified Prometheus.Metric.GHC as Prom
-import Servant (serve)
-import Text.PrettyPrint.Leijen.Text (int, text)
-import Database.Persist.Sql (runSqlPool)
+import           Servant (serve)
+import           Text.PrettyPrint.Leijen.Text (int, text)
+import           Database.Persist.Sql (runSqlPool)
 
-import Rsvp.API (api)
-import Rsvp.Server.Config (makePool, Environment(..), Config(..))
-import Rsvp.Server.Handlers (server)
-import Rsvp.Server.Instrument
+import           Rsvp.API (api)
+import           Rsvp.Server.Config (makePool, Environment(..), Config(..), mkAuthConfig)
+import           Rsvp.Server.Handlers (server)
+import           Rsvp.Server.Instrument
        (defaultPrometheusSettings, prometheus, requestDuration)
-import Rsvp.Server.Models (doMigrations)
 import qualified Rsvp.Server.Logging as Log
+import           Rsvp.Server.Models (doMigrations)
+
+import           Protolude
+import qualified Prelude
+
 
 -- | Configuration for the application.
 data CliConfig = CliConfig
@@ -107,7 +108,7 @@ runApp config@CliConfig {..} = do
       requests <- Prom.registerIO requestDuration
       env <- lookupSetting "ENV" Development
       pool <- makePool env
-      let appConfig = Config pool logLevel env
+      let appConfig = Config pool logLevel (mkAuthConfig pool) env
   runSqlPool doMigrations pool
 
   when enableGhcMetrics $ do

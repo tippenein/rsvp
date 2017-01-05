@@ -16,6 +16,7 @@ import           Database.Esqueleto
 import           Database.Persist.Sql (toSqlKey, selectList)
 import           Network.Wai (Application)
 import           Servant (serveDirectory, err404, ServantErr, Server, (:<|>)(..), (:~>)(..), enter)
+import qualified Servant.Server.Auth.Token as Auth
 import           Text.PrettyPrint.Leijen.Text (Doc, Pretty, text)
 
 import           Rsvp.API
@@ -40,7 +41,9 @@ rsvpServer config = enter (toHandler config) handlers
 
 -- | rsvp API implementation.
 server :: Config.Config -> Server API
-server config = enter (toHandler config) handlers :<|> files
+server config = enter (toHandler config) handlers
+  :<|> Auth.authServer (Config.authConfig config)
+  :<|> files
   where
     handlers =
       pure RootPage :<|>

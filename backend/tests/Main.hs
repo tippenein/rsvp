@@ -22,7 +22,7 @@ import Rsvp.API (rsvpApi)
 import Shared.Types
 import Database.Persist.Sql
 import Rsvp.Server.Models
-import Rsvp.Server.Config (Config(..), makePool, Environment(Test))
+import Rsvp.Server.Config (Config(..), makePool, Environment(Test), mkAuthConfig)
 import Rsvp.Server.Handlers (rsvpServer)
 
 import Protolude
@@ -33,10 +33,10 @@ main = defaultMain =<< tests
 tests :: IO TestTree
 tests = do
   env <- pure Test
-  let cfg  = Config (unsafePerformIO $ makePool Test) Log.Error env
+  let pool = unsafePerformIO $ makePool Test
+  let cfg  = Config pool Log.Error (mkAuthConfig pool) env
   liftIO $ setupTest cfg
   specs <- testSpec "servant tests" $ spec cfg
-  -- sharedSpecs <- testSpec "quickcheck tests" $ sharedSpec
   units <- testSpec "unit tests" unitTests
   pure $ testGroup "Rsvp.Backend" [specs, sharedSpec, units]
 

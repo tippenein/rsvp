@@ -24,7 +24,7 @@ library
   default-extensions: NoImplicitPrelude OverloadedStrings RecordWildCards
   ghc-options: -Wall -Werror
   build-depends:
-      base >= 4.9 && < 5
+      base >= 4.7 && < 5
     , protolude
     , shared
     , aeson
@@ -44,6 +44,8 @@ library
     , persistent-template
     , servant
     , servant-server
+    , servant-auth-token
+    , servant-auth-token-api
     , text
     , time
     , transformers
@@ -73,7 +75,7 @@ executable rsvp
   default-extensions: NoImplicitPrelude OverloadedStrings RecordWildCards
   ghc-options: -Wall -Werror
   build-depends:
-      base >= 4.9 && < 5
+      base >= 4.7 && < 5
     , protolude
     , shared
     , backend
@@ -87,7 +89,7 @@ test-suite rsvp-api-tests
   default-extensions: NoImplicitPrelude OverloadedStrings RecordWildCards
   ghc-options: -Wall -Werror
   build-depends:
-      base >= 4.9 && < 5
+      base >= 4.7 && < 5
     , protolude
     , shared
     , backend

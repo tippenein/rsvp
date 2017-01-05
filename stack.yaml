@@ -4,6 +4,7 @@
 # For advanced use and comprehensive documentation of the format, please see:
 # http://docs.haskellstack.org/en/stable/yaml_configuration/
 
+
 # Resolver to choose a 'specific' stackage snapshot or a compiler version.
 # A snapshot resolver dictates the compiler version and the set of packages
 # to be used for project dependencies. For example:
@@ -15,7 +16,7 @@
 # resolver:
 #  name: custom-snapshot
 #  location: "./custom-snapshot.yaml"
-resolver: nightly-2016-12-22
+resolver: nightly-2016-12-31
 
 # User packages to be built.
 # Various formats can be used as shown in the example below.
@@ -49,11 +50,15 @@ extra-deps:
 - hspec-discover-2.2.4
 - hspec-expectations-0.7.2
 - http-api-data-0.2.4
+- insert-ordered-containers-0.1.0.1
 - persistent-2.2.4.1
 - persistent-postgresql-2.2.2
 - persistent-template-2.1.8.1
 - servant-0.8.1
+- servant-auth-token-0.3.2.0
+- servant-auth-token-api-0.3.2.0
 - servant-client-0.8.1
+- servant-docs-0.8.1
 - servant-quickcheck-0.0.2.2
 - servant-server-0.8.1
 

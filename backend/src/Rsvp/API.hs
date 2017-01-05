@@ -15,8 +15,9 @@ import           Servant.API
 
 import           Shared.Types
 import           Rsvp.API.Internal (HTML)
+import qualified Servant.API.Auth.Token as Auth
 
-type API = RsvpAPI :<|> Raw
+type API = RsvpAPI :<|> Auth.AuthAPI :<|> Raw
 type RsvpAPI =
   Get '[HTML] RootPage :<|>
   "users" :> Get '[JSON] (ListResponse User) :<|>
