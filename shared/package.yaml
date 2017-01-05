@@ -14,7 +14,7 @@ default-extensions:
   - RecordWildCards
 
 dependencies:
-  - base >= 4.8 && < 5
+  - base >= 4.7 && < 5
   - protolude
   - text
 
@@ -30,3 +30,5 @@ library:
     - binary
     - persistent
     - persistent-template
+    - servant-auth-token
+    - servant-auth-token-api

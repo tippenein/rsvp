@@ -17,6 +17,8 @@ import           Database.Persist.Postgresql          (ConnectionPool,
 import           Network.Wai (Middleware)
 import           Network.Wai.Middleware.RequestLogger (logStdout, logStdoutDev)
 import           Servant (ServantErr)
+import           Servant.Server.Auth.Token
+import qualified Servant.Server.Auth.Token.Config as TokConfig
 import           System.Environment (lookupEnv)
 
 import           Protolude
@@ -40,9 +42,16 @@ data Config
     = Config
     { getPool :: ConnectionPool
     , logLevel :: Severity
+    , authConfig :: TokConfig.AuthConfig
     , getEnv  :: Environment
     }
 
+instance AuthMonad App where
+  getAuthConfig = asks authConfig
+  liftAuthAction = App . lift
+
+mkAuthConfig :: ConnectionPool -> TokConfig.AuthConfig
+mkAuthConfig = TokConfig.defaultAuthConfig
 -- | Right now, we're distinguishing between three environments. We could
 -- also add a @Staging@ environment if we needed to.
 data Environment

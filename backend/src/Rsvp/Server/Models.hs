@@ -6,6 +6,7 @@ import           Control.Monad.Reader
 import qualified Database.Persist.Sql as Sql
 import           Rsvp.Server.Config
 import           Shared.Types (migrateAll)
+import qualified Servant.Server.Auth.Token as Auth
 
 import           Protolude
 
@@ -13,7 +14,9 @@ toKey :: forall record . Sql.ToBackendKey Sql.SqlBackend record => Int64 -> Sql.
 toKey = Sql.toSqlKey
 
 doMigrations :: Sql.SqlPersistT IO ()
-doMigrations = Sql.runMigration migrateAll
+doMigrations = do
+  Sql.runMigration Auth.migrateAll
+  Sql.runMigration migrateAll
 
 runDb :: (MonadReader Config m, MonadIO m) => Sql.SqlPersistT IO b -> m b
 runDb query = do
