@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE RankNTypes #-}
 
 -- | Implementation of the rsvp API.
 module Rsvp.Server.Handlers
@@ -13,7 +14,7 @@ import           Control.Monad.Except (ExceptT(..))
 import           Control.Monad.Log (logInfo)
 import           Control.Monad.Reader (ReaderT, runReaderT)
 import           Database.Esqueleto
-import           Database.Persist.Sql (toSqlKey, selectList)
+import           Database.Persist.Sql (toSqlKey, selectList, SelectOpt(..))
 import           Network.Wai (Application)
 import           Servant (serveDirectory, err404, ServantErr, Server, (:<|>)(..), (:~>)(..), enter)
 import qualified Servant.Server.Auth.Token as Auth
@@ -56,6 +57,7 @@ server config = enter (toHandler config) handlers
 -- | Our custom handler type.
 type Handler msg = ReaderT Config.Config (ExceptT ServantErr (Log.LogM msg IO))
 
+type PaginationParams next = Maybe Int -> Maybe Int -> next
 
 -- | Translate our custom monad into a Servant handler.
 --
@@ -72,10 +74,10 @@ convertToHandler
   -> ExceptT ServantErr IO a
 convertToHandler cfg = ExceptT . Log.withLogging (Config.logLevel cfg) . runExceptT . flip runReaderT cfg
 
-users :: Handler Doc (ListResponse User)
-users = do
-  us <- runDb $ selectList [] []
-  pure (ListResponse us)
+users :: PaginationParams (Handler Doc (PaginatedResponse User))
+users page per_page = do
+  us <- runDb $ selectList [] (paginationParams page per_page)
+  pure (PaginatedResponse 1 1 us)
 
 getEvent :: Int64 -> Handler Doc Event
 getEvent id = do
@@ -94,20 +96,26 @@ createEvent event = do
                            , _posted_content = event }
   pure $ EventCreateResponse rsp
 
-events :: Maybe Text -> Handler Doc (ListResponse Event)
-events mname =
+events :: Maybe Text -> PaginationParams (Handler Doc (PaginatedResponse Event))
+events mname page per_page =
   case mname of
     Nothing -> do
-      es <- runDb $ selectList [] []
-      pure (ListResponse es)
+      es <- runDb $ selectList [] (paginationParams page per_page)
+      pure (PaginatedResponse 1 1 es)
     Just name -> do
       logInfo (text $ "showing matches to: " <> show name)
       es <- runDb $ select $ from $ \events' -> do
         where_ (events' ^. EventName `like` (%) ++. val name ++. (%))
         pure events'
-      pure (ListResponse es)
+      pure (PaginatedResponse 1 1 es)
 
-rsvps :: Handler Doc (ListResponse Rsvp)
-rsvps = do
-  rs <- runDb $ selectList [] []
-  pure (ListResponse rs)
+rsvps :: PaginationParams (Handler Doc (PaginatedResponse Rsvp))
+rsvps page per_page = do
+  rs <- runDb $ selectList [] (paginationParams page per_page)
+  pure (PaginatedResponse 1 1 rs)
+
+paginationParams :: forall record. Maybe Int -> Maybe Int -> [SelectOpt record]
+paginationParams page per_page =
+  let pp = fromMaybe 1 per_page
+      off = pp * fromMaybe 0 page
+  in [OffsetBy off, LimitTo pp]

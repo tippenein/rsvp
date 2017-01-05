@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE QuasiQuotes #-}
@@ -12,17 +13,23 @@ import           Protolude
 import           Data.Int (Int64)
 import qualified NeatInterpolation as NI
 import           Servant.API
+import qualified Servant.API.Auth.Token as Auth
 
 import           Shared.Types
 import           Rsvp.API.Internal (HTML)
-import qualified Servant.API.Auth.Token as Auth
+
+type Paginate c cts a =
+  QueryParam "page" Int :>
+  QueryParam "per_page" Int :>
+  c cts (PaginatedResponse a)
 
 type API = RsvpAPI :<|> Auth.AuthAPI :<|> Raw
+
 type RsvpAPI =
   Get '[HTML] RootPage :<|>
-  "users" :> Get '[JSON] (ListResponse User) :<|>
-  "rsvps" :> Get '[JSON] (ListResponse Rsvp) :<|>
-  GetEvent:<|>
+  "users" :> Paginate Get '[JSON] User :<|>
+  "rsvps" :> Paginate Get '[JSON] Rsvp :<|>
+  GetEvent :<|>
   ListEvents :<|>
   CreateEvent
 
@@ -30,7 +37,7 @@ type GetEvent =
   "events" :> Capture "id" Int64 :> Get '[JSON] Event
 
 type ListEvents =
-  "events" :> QueryParam "name" Text :> Get '[JSON] (ListResponse Event)
+  "events" :> QueryParam "name" Text :> Paginate Get '[JSON] Event
 
 type CreateEvent =
   "events"

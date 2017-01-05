@@ -28,7 +28,7 @@ data Action
   | NewUser User
   | CloseStatus
   | ToggleEventForm
-  | EventsPayload (ListResponse RsvpEvent)
+  | EventsPayload (PaginatedResponse RsvpEvent)
   | CreateEventPayload EventCreateResponse
 
 data Model
@@ -54,7 +54,7 @@ update :: Action -> Model -> Model
 update InitialLoad m = m
 update (SelectEvent e) m = m { _selected = pure e }
 update (Query s) m = m { _query = s  }
-update (EventsPayload (ListResponse rsp)) m =
+update (EventsPayload (PaginatedResponse rsp)) m =
   m { _events = Map.fromList $ fmap entityToTuple rsp }
 update CloseStatus m = m { _status = Nothing }
 update NewEvent m = m { _status = pure $ Info "creating new event" }

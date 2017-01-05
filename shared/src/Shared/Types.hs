@@ -110,11 +110,18 @@ data CreateResponse a
   , _posted_content :: a
   } deriving (Eq, Show, Generic)
 
-newtype ListResponse a = ListResponse { _content :: [Entity a] } deriving (Generic)
+data PaginatedResponse a = PaginatedResponse
+  { page :: Int
+  , totalPages :: Int
+  , _content :: [Entity a]
+  } deriving (Generic)
 
-type EventsResponse = ListResponse Event
-type UsersResponse = ListResponse User
-type RsvpsResponse = ListResponse Rsvp
+instance (FromJSON a, PersistEntity a) => FromJSON (PaginatedResponse a)
+instance (ToJSON a, PersistEntity a) => ToJSON (PaginatedResponse a)
+-- Example
+type EventsResponse = PaginatedResponse Event
+type UsersResponse = PaginatedResponse User
+type RsvpsResponse = PaginatedResponse Rsvp
 
 newtype EventCreateResponse =
   EventCreateResponse (CreateResponse Event)
@@ -123,12 +130,16 @@ newtype EventCreateResponse =
 instance FromJSON EventCreateResponse
 instance ToJSON EventCreateResponse
 
-instance (ToJSON a, PersistEntity a) => ToJSON (ListResponse a) where
-  toJSON (ListResponse ls) = object [ "content" .= toJSON ls ]
+-- instance (ToJSON a, PersistEntity a, FromJSON a) => ToJSON (PaginatedResponse a) where
+--   toJSON (PaginatedResponse page per_page ls) = object [ "page" .= toJSON page
+--                                                        , "per_page" .= toJSON per_page
+--                                                        , "content" .= toJSON ls ]
 
-instance (FromJSON a, PersistEntity a) => FromJSON (ListResponse a) where
-  parseJSON (Object v) = ListResponse <$> v .: "content"
-  parseJSON x = typeMismatch "List Response" x
+-- instance (FromJSON a, PersistEntity a, ToJSON a) => FromJSON (PaginatedResponse a) where
+--   parseJSON (Object v) = PaginatedResponse <$> v .: "page"
+--                                            <*> v .: "per_page"
+--                                            <*> v .: "content"
+--   parseJSON x = typeMismatch "List Response" x
 
 instance (ToJSON a) => ToJSON (CreateResponse a) where
   toJSON (CreateResponse msg db e) = object [ "content" .= toJSON e
