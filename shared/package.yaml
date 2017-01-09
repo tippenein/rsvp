@@ -30,5 +30,3 @@ library:
     - binary
     - persistent
     - persistent-template
-    - servant-auth-token
-    - servant-auth-token-api

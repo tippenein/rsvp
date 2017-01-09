@@ -149,13 +149,6 @@ fileLoader cfg = do
     let Right contents = B64.decode (T.encodeUtf8 $ snd $ T.breakOnEnd "base64," res)
     return contents
 
--- fileToByteString :: Maybe G.File -> Maybe ByteString
--- fileToByteString mfile = do
---   fr <- G.newFileReaderSync
---   abuff <- G.readAsArrayBuffer fr mfile
---   pure $ Buffer.toByteString 0 Nothing $ Buffer.createFromArrayBuffer abuff
---   pure mbytestring
-
 bootstrapFileInput :: MonadWidget t m => Text -> m (Event t ByteString)
 bootstrapFileInput t = fileInputAttr t ("class" =: "btn btn-default btn-file")
 
