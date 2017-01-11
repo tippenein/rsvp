@@ -21,14 +21,17 @@ import qualified Data.Text.Encoding as T
 import qualified Data.ByteString.Base64 as B64
 import           Data.Time.Clock (UTCTime)
 import           Data.Time.Format (defaultTimeLocale, parseTimeM)
+import qualified GHCJS.DOM.EventM as EventM
 import qualified GHCJS.DOM.JSFFI.Generated.FileReader as FileReader
 import qualified GHCJS.Marshal as Marshal
-import qualified GHCJS.DOM.EventM as EventM
+import qualified GHCJS.Types as T
 
 import           Common
 import           Protolude hiding ((&))
 
 type PageTitle = Text
+
+foreign import javascript unsafe "document.getElementById($1).reset()" reset :: T.JSString -> IO ()
 
 searchInput :: MonadWidget t m => m (TextInput t)
 searchInput =

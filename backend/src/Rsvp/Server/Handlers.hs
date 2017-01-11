@@ -116,6 +116,6 @@ rsvps page per_page = do
 
 paginationParams :: forall record. Maybe Int -> Maybe Int -> [SelectOpt record]
 paginationParams page per_page =
-  let pp = fromMaybe 1 per_page
+  let pp = fromMaybe 6 per_page
       off = pp * fromMaybe 0 page
   in [OffsetBy off, LimitTo pp]

@@ -27,7 +27,7 @@ widgetHoldHelper
     -> m (Dynamic t b)
 widgetHoldHelper f eDef e = widgetHold (f eDef) (f <$> e)
 
-maybeLookup :: (Ord k) => Maybe Int -> Map k v -> Maybe v
+maybeLookup :: (Ord k) => Maybe k -> Map k v -> Maybe v
 maybeLookup midx m = case midx of
   Nothing -> Nothing
   Just idx -> Map.lookup idx m

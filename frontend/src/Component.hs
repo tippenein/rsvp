@@ -37,6 +37,7 @@ eventForm visible = do
 mkEventForm :: MonadWidget t m => m (Dynamic t RsvpEvent, Event t (), Event t ())
 mkEventForm = do
   let attrs = mconcat ["class" =: "form event-form"
+                      , "id" =: "event-form"
                       , "action" =: "/events"
                       , "method" =: "post"
                       ]

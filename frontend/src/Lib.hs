@@ -54,11 +54,12 @@ update :: Action -> Model -> Model
 update InitialLoad m = m
 update (SelectEvent e) m = m { _selected = pure e }
 update (Query s) m = m { _query = s  }
-update (EventsPayload (PaginatedResponse rsp)) m =
-  m { _events = Map.fromList $ fmap entityToTuple rsp }
 update CloseStatus m = m { _status = Nothing }
-update NewEvent m = m { _status = pure $ Info "creating new event" }
 update (NewUser _) m = m
+-- | events
+update NewEvent m = m { _status = pure $ Info "creating new event" }
+update (EventsPayload (PaginatedResponse _ _ rsp)) m =
+  m { _events = Map.fromList $ fmap entityToTuple rsp }
 update ToggleEventForm m = m { _show_event_form = not $ _show_event_form m }
 update (CreateEventPayload (EventCreateResponse rsp)) m =
   m { _status = pure $ _message rsp,
@@ -78,6 +79,7 @@ view model = div "container" $
   Component.adminControl showEventForm >>= \newEventClick -> do
 
   Component.eventForm showEventForm >>= \(eventCreateResponse, e, submitEvent, cancelEvent) -> do
+  performEvent_ $ fmap (\_ -> liftIO $ Widget.reset "event-form") eventCreateResponse
 
   searchForm >>= \(eventsResponse, requestEvents) -> do
 
