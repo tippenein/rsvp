@@ -10,13 +10,12 @@ module Rsvp.API where
 
 import           Protolude
 
-import           Data.Int (Int64)
 import qualified NeatInterpolation as NI
 import           Servant.API
 import qualified Servant.API.Auth.Token as Auth
 
 import           Shared.Types
-import           Rsvp.API.Internal (HTML)
+import           Rsvp.API.Internal (HTML, SelectById)
 
 type Paginate c cts a =
   QueryParam "page" Int :>
@@ -34,7 +33,7 @@ type RsvpAPI =
   CreateEvent
 
 type GetEvent =
-  "events" :> Capture "id" Int64 :> Get '[JSON] Event
+  "events" :> SelectById "id" Event
 
 type ListEvents =
   "events" :> QueryParam "name" Text :> Paginate Get '[JSON] Event

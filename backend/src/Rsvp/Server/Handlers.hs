@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE GADTs #-}
 
 -- | Implementation of the rsvp API.
 module Rsvp.Server.Handlers
@@ -79,12 +80,12 @@ users page per_page = do
   us <- runDb $ selectList [] (paginationParams page per_page)
   pure (PaginatedResponse 1 1 us)
 
-getEvent :: Int64 -> Handler Doc Event
-getEvent id = do
-  record <- runDb $ get (toSqlKey id)
-  case record of
-    Nothing -> throwError err404
-    Just a -> pure a
+getEvent :: DbKey -> Handler Doc Event
+getEvent = selectById
+  -- record <- runDb $ get (toSqlKey id)
+  -- case record of
+  --   Nothing -> throwError err404
+  --   Just a -> pure a
 
 createEvent :: Event -> Handler Doc EventCreateResponse
 createEvent event = do
@@ -114,8 +115,18 @@ rsvps page per_page = do
   rs <- runDb $ selectList [] (paginationParams page per_page)
   pure (PaginatedResponse 1 1 rs)
 
+--- helpers
 paginationParams :: forall record. Maybe Int -> Maybe Int -> [SelectOpt record]
 paginationParams page per_page =
   let pp = fromMaybe 6 per_page
       off = pp * fromMaybe 0 page
   in [OffsetBy off, LimitTo pp]
+
+selectById :: ( PersistEntityBackend record ~ SqlBackend, ToBackendKey SqlBackend record)
+  => DbKey
+  -> Handler Doc record
+selectById ident = do
+  result <- runDb $ get (toSqlKey ident)
+  case result of
+    Nothing -> throwError err404
+    Just r  -> pure r
