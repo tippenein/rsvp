@@ -109,6 +109,19 @@ selectableList selection elems mkEntry = do
   let selected = fmap (leftmost . Map.elems) selectEntry
   pure $ switchPromptlyDyn selected
 
+selectableListWithKey
+  :: (MonadWidget t m, Ord key)
+  => Dynamic t (Maybe key)
+  -> Dynamic t (Map key v)
+  -> (Dynamic t Bool -> key -> Dynamic t v -> m (Event t key))
+  -> m (Event t key)
+selectableListWithKey selection elems mkEntry = do
+  selectEntry <- listWithKey elems $ \k v -> do
+      let isSelected = ffor selection $ \s -> s == Just k
+      fmap (const k) <$> mkEntry isSelected k v
+  let selected = fmap (leftmost . Map.elems) selectEntry
+  pure $ switchPromptlyDyn selected
+
 dynCombine :: (Reflex t, MonadHold t m)
            => Dynamic t a -> Dynamic t b
            -> (a -> b -> c)

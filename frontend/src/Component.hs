@@ -54,12 +54,33 @@ mkEventForm = do
   let e = Shared.Event (toSqlKey 1) <$> nameDyn <*> contactDyn <*> fileDyn
   pure (e, submitEvent, cancelEvent)
 
-eventListing :: MonadWidget t m => Dynamic t (Map DbKey RsvpEvent) -> Dynamic t (Maybe DbKey) -> m (Event t DbKey)
-eventListing eventMap selectedEvent = do
-  eventSelected <- divClass "row" $
-    elClass "div" "event-listing" $ Widget.selectableList selectedEvent eventMap $ \sel rsvp_event ->
-      domEvent Click <$> eventEl sel rsvp_event
-  pure eventSelected
+eventListing :: MonadWidget t m
+  => Dynamic t (Map DbKey RsvpEvent)
+  -> Dynamic t (Maybe DbKey)
+  -> m (Event t DbKey)
+eventListing eventMap selectedEvent = elClass "div" "row event-listing" $ do
+  Widget.selectableListWithKey selectedEvent eventMap $ \sel db_key rsvp_event -> do
+    e <- eventEl sel db_key rsvp_event
+    pure $ db_key <$ domEvent Click e
+
+eventEl :: (MonadWidget t m)
+   => Dynamic t Bool
+   -> DbKey
+   -> Dynamic t RsvpEvent
+   -> m (El t)
+eventEl sel db_key rsvp_event = do
+  let commonAttrs = constDyn $ "class" =: "panel panel-default event-wrap"
+  let attrs = fmap (`Common.monoidGuard` selectedStyle) sel
+  (e,_) <- elDynAttr' "div" (zipDynWith classMerge attrs commonAttrs) $ do
+    elClass "div" "panel-heading" $ dynText $ fmap eventName rsvp_event
+    elClass "div" "panel-body" $ dynText $ fmap eventContact rsvp_event
+    elClass "div" "img-wrapper" $ imgBinEl db_key
+  pure e
+
+imgBinEl :: (MonadWidget t m) => DbKey -> m ()
+imgBinEl db_key = do
+  let attrs = eventImageAttrs $ def { ei_img_src = Just $ "/events/" <> show db_key <> "/image" }
+  elAttr "img" attrs blank
 
 flashStatus :: MonadWidget t m => Dynamic t (Maybe Status) -> m (Event t ())
 flashStatus status = div "errors row" $ do
@@ -100,19 +121,6 @@ flash status =
     text $ show status
     pure c
 
-eventEl :: (MonadWidget t m)
-   => Dynamic t Bool
-   -> Dynamic t RsvpEvent
-   -> m (El t)
-eventEl sel rsvp_event = do
-  let commonAttrs = constDyn $ "class" =: "panel panel-default event-wrap"
-  let attrs = fmap (`Common.monoidGuard` selectedStyle) sel
-  (e,_) <- elDynAttr' "div" (zipDynWith classMerge attrs commonAttrs) $ do
-    elClass "div" "panel-heading" $ dynText $ fmap eventName rsvp_event
-    elClass "div" "panel-body" $ dynText $ fmap eventContact rsvp_event
-    elClass "div" "img-wrapper" $ dyn $ fmap imgBinEl rsvp_event
-  pure e
-
 data EventImageConfig = EventImageConfig
   { ei_height :: Int
   , ei_width :: Int
@@ -125,10 +133,6 @@ instance Default EventImageConfig where
     , ei_height = 300
     , ei_img_src = Nothing }
 
-imgBinEl :: (MonadWidget t m) => RsvpEvent -> m ()
-imgBinEl rsvp_event = do
-  let attrs = eventImageAttrs $ def { ei_img_src = imgSrcFrom rsvp_event }
-  elAttr "img" attrs blank
 
 eventImageAttrs :: EventImageConfig -> ElAttrs
 eventImageAttrs conf =

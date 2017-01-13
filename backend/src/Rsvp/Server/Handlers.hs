@@ -38,6 +38,7 @@ rsvpServer config = enter (toHandler config) handlers
       users :<|>
       rsvps :<|>
       getEvent :<|>
+      getEventImage :<|>
       events :<|>
       createEvent
 
@@ -52,6 +53,7 @@ server config = enter (toHandler config) handlers
       users :<|>
       rsvps :<|>
       getEvent :<|>
+      getEventImage :<|>
       events :<|>
       createEvent
 
@@ -82,10 +84,13 @@ users page per_page = do
 
 getEvent :: DbKey -> Handler Doc Event
 getEvent = selectById
-  -- record <- runDb $ get (toSqlKey id)
-  -- case record of
-  --   Nothing -> throwError err404
-  --   Just a -> pure a
+
+getEventImage :: DbKey -> Handler Doc ByteString
+getEventImage id = do
+  record <- runDb $ get (toSqlKey id)
+  case record of
+    Nothing -> throwError err404
+    Just a -> pure $ fromMaybe "" $ eventImage a
 
 createEvent :: Event -> Handler Doc EventCreateResponse
 createEvent event = do

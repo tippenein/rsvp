@@ -29,11 +29,15 @@ type RsvpAPI =
   "users" :> Paginate Get '[JSON] User :<|>
   "rsvps" :> Paginate Get '[JSON] Rsvp :<|>
   GetEvent :<|>
+  GetEventImage :<|>
   ListEvents :<|>
   CreateEvent
 
 type GetEvent =
   "events" :> SelectById "id" Event
+
+type GetEventImage =
+  "events" :> Capture "id" DbKey :> "image" :> Get '[OctetStream] ByteString
 
 type ListEvents =
   "events" :> QueryParam "name" Text :> Paginate Get '[JSON] Event
