@@ -65,13 +65,22 @@ tests:
     source-dirs: tests
     dependencies:
       - backend
+      - aeson
+      - http-types
       - logging-effect
       - base64-bytestring
       - bytestring
+      - http-types
+      - hspec
+      - hspec-wai-json
+      - hspec-wai
       - QuickCheck
       - quickcheck-instances
       - servant-quickcheck
+      - servant-server
       - persistent
+      - wai-extra
+      - wai
       - tasty
       - tasty-hspec
       - tasty-quickcheck

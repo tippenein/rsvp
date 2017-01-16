@@ -1,31 +1,42 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE KindSignatures #-}
+
 module Main
   ( main
   ) where
 
 import qualified Control.Monad.Log as Log
--- import Data.Aeson
-import Test.QuickCheck
-import Test.QuickCheck.Instances ()
-import Servant.QuickCheck
-       ((<%>), createContainsValidLocation, defaultArgs, not500,
-        notLongerThan, serverSatisfies,
-        unauthorizedContainsWWWAuthenticate, withServantServer)
-import Test.Tasty (defaultMain, TestTree, testGroup)
-import Test.Tasty.Hspec -- (Spec, it, testSpec)
--- import Test.Tasty.QuickCheck as QC
-import System.IO.Unsafe (unsafePerformIO)
---------------------------------------------
-import qualified Data.ByteString.Base64 as B64
+import           Data.Aeson
 import qualified Data.ByteString as ByteString
-import Rsvp.API (rsvpApi)
-import Shared.Types
-import Database.Persist.Sql
-import Rsvp.Server.Models
-import Rsvp.Server.Config (Config(..), makePool, Environment(Test), mkAuthConfig)
-import Rsvp.Server.Handlers (rsvpServer)
+import qualified Data.ByteString.Base64 as B64
+import           Database.Persist.Sql hiding (get)
+import           Network.HTTP.Types.Method (methodPost)
+import           Network.HTTP.Types.Header (hContentType)
+import           Network.Wai (Application)
+import           Network.Wai.Test (SResponse)
+-- import           Servant.QuickCheck
+--                   ((<%>), createContainsValidLocation, defaultArgs, not500,
+--                     notLongerThan, serverSatisfies,
+--                     unauthorizedContainsWWWAuthenticate, withServantServer)
+import           Servant.Server (serve)
+import           System.IO.Unsafe (unsafePerformIO)
+import           Test.Hspec.Wai
+-- import           Test.Hspec.Wai.JSON
+import           Test.QuickCheck
+import           Test.QuickCheck.Instances ()
+import           Test.Tasty (defaultMain, TestTree, testGroup)
+import           Test.Tasty.Hspec -- (Spec, it, testSpec)
+import Test.Tasty.QuickCheck as QC
+--------------------------------------------
+import           Rsvp.API (rsvpApi)
+import           Shared.Types
+import           Rsvp.Server.Models
+import           Rsvp.Server.Config (Config(..), makePool, Environment(Test), mkAuthConfig)
+import           Rsvp.Server.Handlers (rsvpServer)
 
-import Protolude
+import           Protolude hiding (get)
 
 main :: IO ()
 main = defaultMain =<< tests
@@ -36,16 +47,25 @@ tests = do
   let pool = unsafePerformIO $ makePool Test
   let cfg  = Config pool Log.Error (mkAuthConfig pool) env
   liftIO $ setupTest cfg
-  specs <- testSpec "servant tests" $ spec cfg
+  -- specs <- testSpec "servant tests" $ spec cfg
+  apiSpecs <- testSpec "api tests" $ apiSpec cfg
   units <- testSpec "unit tests" unitTests
-  pure $ testGroup "Rsvp.Backend" [specs, sharedSpec, units]
+  liftIO $ tearDownTest cfg
+  pure $ testGroup "Rsvp.Backend" [sharedSpec, units, apiSpecs]
 
 
 someId :: Gen Int64
 someId = pure 1
 
+instance Arbitrary (BackendKey SqlBackend) where
+  arbitrary = SqlBackendKey <$> arbitraryPositiveInt
+
 instance Arbitrary Event where
-  arbitrary = Event <$> (toKey <$> someId) <*> arbitrary <*> arbitrary <*> arbitrary
+  arbitrary = Event <$>
+    (UserKey <$> arbitraryPositiveInt)
+    <*> arbitrary
+    <*> arbitrary
+    <*> arbitrary
 
 instance Arbitrary Rsvp where
   arbitrary = Rsvp <$> (toKey <$> someId) <*> arbitrary <*> arbitrary
@@ -53,25 +73,53 @@ instance Arbitrary Rsvp where
 instance Arbitrary User where
   arbitrary = User <$> arbitrary <*> arbitrary
 
-spec :: Config -> Spec
-spec cfg =
-  it "follows best practices" $
-    withServantServer rsvpApi (pure $ rsvpServer cfg) $
-      \burl ->
-        serverSatisfies
-          rsvpApi
-          burl
-          defaultArgs
-          (not500 <%>
-            createContainsValidLocation <%>
-            notLongerThan 100000000 <%>
-            unauthorizedContainsWWWAuthenticate <%>
-            mempty)
+arbitraryPositiveInt :: (Num a, Ord a, Arbitrary a) => Gen a
+arbitraryPositiveInt = arbitrary `suchThat` (> 1)
+
+-- spec :: Config -> Spec
+-- spec cfg =
+--   it "follows best practices" $
+--     pure ()
+    -- withServantServer rsvpApi (pure $ rsvpServer cfg) $
+    --   \burl ->
+    --     serverSatisfies
+    --       rsvpApi
+    --       burl
+    --       defaultArgs
+    --       (not500 <%>
+    --         createContainsValidLocation <%>
+    --         notLongerThan 100000000 <%>
+    --         unauthorizedContainsWWWAuthenticate <%>
+    --         mempty)
+
+app :: forall (f :: * -> *). Applicative f => Config -> f Application
+app cfg = pure $ serve rsvpApi (rsvpServer cfg)
+
+apiSpec :: Config -> Spec
+apiSpec cfg = with (setupTest cfg >> app cfg) $ do
+  it "paginates" $
+    get "/events?page=1&per_page=1" `shouldRespondWith` 200
+
+  it "denies bad event with 405" $ do
+    let e = Event (toSqlKey 9001) "new" "something" Nothing
+    postJson "/events" e `shouldRespondWith` 400
+
+  it "fetches image from event id" $ do
+    i <- liftIO $ runSqlPool stuff (getPool cfg)
+    get ("/events/" <> show i <> "/image") `shouldRespondWith` 200
+    where
+      stuff = do
+        uid <- insert $ User "a" "b"
+        i <- insert $ event_with_image uid
+        pure $ fromSqlKey i
+
+postJson :: (ToJSON a) => ByteString -> a -> WaiSession SResponse
+postJson path = request methodPost path [(hContentType, "application/json")] . encode
 
 sharedSpec :: TestTree
 sharedSpec = testGroup "encoding/decoding" [
   -- QC.testProperty "encoding . decoding  event" $
-  --     \e -> encode $ decode $ (e :: Event) == e
+  --   \e -> encode $ decode (generate (arbitrary :: Gen Event)) == e
   ]
 
 setupTest :: Config -> IO ()
@@ -80,15 +128,24 @@ setupTest cfg = runSqlPool stuff (getPool cfg)
     stuff = do
       doMigrations
       uid <- insert $ User "whatever" "whatever@whatever.com"
-      let img = unsafePerformIO $ B64.encode <$> ByteString.readFile "tests/fixtures/image.png"
-      _ <- insert $ Event uid "some event" "derp" (Just img)
-      _ <- insert $ Event uid "some other event" "something" Nothing
+      _ <- insert $ event_with_image uid
+      _ <- insert $ Event uid "no image" "something" Nothing
       pure()
+
+tearDownTest :: Config -> IO ()
+tearDownTest cfg = runSqlPool stuff (getPool cfg)
+  where
+    stuff = do
+      deleteWhere [EventId >=. toSqlKey 0]
+      deleteWhere [UserId >=. toSqlKey 0]
+      pure()
+
+event_with_image :: Key User -> Event
+event_with_image uid =
+  let img = unsafePerformIO $ B64.encode <$> ByteString.readFile "tests/fixtures/image.png"
+  in Event uid "with image" "derp" (Just img)
 
 unitTests :: Spec
 unitTests =
   it "passes" $
     True `shouldBe` True
-
--- arbitraryPositiveInt :: (Num a, Ord a, Arbitrary a) => Gen a
--- arbitraryPositiveInt = arbitrary `suchThat` (> 1)

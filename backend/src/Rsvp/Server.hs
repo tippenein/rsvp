@@ -9,23 +9,20 @@ module Rsvp.Server
   , startApp
   ) where
 
-import           System.Environment (lookupEnv)
-import           Control.Monad.Log (Severity(..))
-import qualified Data.List as List
+import           Database.Persist.Sql (runSqlPool)
 import           GHC.Stats (getGCStatsEnabled)
 import           Network.Wai.Handler.Warp
-        (Port, Settings, defaultSettings, runSettings, setBeforeMainLoop,
+        (Settings, defaultSettings, runSettings, setBeforeMainLoop,
         setPort)
 import qualified Network.Wai.Middleware.RequestLogger as RL
-import           Options.Applicative
-       (ParserInfo, auto, eitherReader, execParser, fullDesc, header,
-        help, helper, info, long, metavar, option, progDesc, switch, value)
+import           Options.Applicative (execParser)
 import qualified Prometheus as Prom
 import qualified Prometheus.Metric.GHC as Prom
+import           Control.Monad.Log (Severity(..))
 import           Servant (serve)
+import           System.Environment (lookupEnv)
 import           Text.PrettyPrint.Leijen.Text (int, text)
-import           Database.Persist.Sql (runSqlPool)
-
+------------------------------
 import           Rsvp.API (api)
 import           Rsvp.Server.Config (makePool, Environment(..), Config(..), mkAuthConfig)
 import           Rsvp.Server.Handlers (server)
