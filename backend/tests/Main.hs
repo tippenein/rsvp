@@ -1,6 +1,8 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE KindSignatures #-}
 
 module Main
@@ -16,10 +18,11 @@ import           Network.HTTP.Types.Method (methodPost)
 import           Network.HTTP.Types.Header (hContentType)
 import           Network.Wai (Application)
 import           Network.Wai.Test (SResponse)
--- import           Servant.QuickCheck
---                   ((<%>), createContainsValidLocation, defaultArgs, not500,
---                     notLongerThan, serverSatisfies,
---                     unauthorizedContainsWWWAuthenticate, withServantServer)
+import           Servant.Mock
+import           Servant.QuickCheck
+                  ((<%>), createContainsValidLocation, defaultArgs, not500,
+                    notLongerThan, serverSatisfies,
+                    unauthorizedContainsWWWAuthenticate, withServantServer)
 import           Servant.Server (serve)
 import           System.IO.Unsafe (unsafePerformIO)
 import           Test.Hspec.Wai
@@ -28,10 +31,12 @@ import           Test.QuickCheck
 import           Test.QuickCheck.Instances ()
 import           Test.Tasty (defaultMain, TestTree, testGroup)
 import           Test.Tasty.Hspec -- (Spec, it, testSpec)
-import Test.Tasty.QuickCheck as QC
+-- import Test.Tasty.QuickCheck as QC
 --------------------------------------------
-import           Rsvp.API (rsvpApi)
+import           Rsvp.API (rsvpApi, RootPage)
+-- import           Rsvp.API.Internal (HTML)
 import           Shared.Types
+import qualified Shared.Types as Types
 import           Rsvp.Server.Models
 import           Rsvp.Server.Config (Config(..), makePool, Environment(Test), mkAuthConfig)
 import           Rsvp.Server.Handlers (rsvpServer)
@@ -60,6 +65,15 @@ someId = pure 1
 instance Arbitrary (BackendKey SqlBackend) where
   arbitrary = SqlBackendKey <$> arbitraryPositiveInt
 
+instance Arbitrary EventCreateResponse where
+  arbitrary = EventCreateResponse <$> arbitrary
+
+instance Arbitrary Status where
+  arbitrary = arbitrary :: Gen Types.Status
+
+instance (ToBackendKey SqlBackend a, Arbitrary a) => Arbitrary (CreateResponse a) where
+  arbitrary = CreateResponse <$> arbitrary <*> arbitraryPositiveInt <*> arbitrary
+
 instance Arbitrary Event where
   arbitrary = Event <$>
     (UserKey <$> arbitraryPositiveInt)
@@ -73,30 +87,50 @@ instance Arbitrary Rsvp where
 instance Arbitrary User where
   arbitrary = User <$> arbitrary <*> arbitrary
 
+instance (ToBackendKey SqlBackend a, Arbitrary a) => Arbitrary (Entity a) where
+  arbitrary = do
+    key <- toSqlKey <$> arbitrary
+    whatever <- arbitrary
+    pure $ Entity key whatever
+
+instance Arbitrary RootPage
+
+instance (ToBackendKey SqlBackend a, Arbitrary a) => Arbitrary (PaginatedResponse a) where
+  arbitrary = PaginatedResponse <$> arbitraryPositiveInt <*> arbitraryPositiveInt <*> arbitraryList
+
+arbitraryList :: Arbitrary a => Gen [a]
+arbitraryList =
+  sized $
+    \n -> do
+      k <- choose (0, n)
+      sequence [ arbitrary | _ <- [1..k] ]
+
 arbitraryPositiveInt :: (Num a, Ord a, Arbitrary a) => Gen a
 arbitraryPositiveInt = arbitrary `suchThat` (> 1)
 
 -- spec :: Config -> Spec
 -- spec cfg =
 --   it "follows best practices" $
---     pure ()
-    -- withServantServer rsvpApi (pure $ rsvpServer cfg) $
-    --   \burl ->
-    --     serverSatisfies
-    --       rsvpApi
-    --       burl
-    --       defaultArgs
-    --       (not500 <%>
-    --         createContainsValidLocation <%>
-    --         notLongerThan 100000000 <%>
-    --         unauthorizedContainsWWWAuthenticate <%>
-    --         mempty)
+--     withServantServer rsvpApi (pure $ rsvpServer cfg) $
+--       \burl ->
+--         serverSatisfies
+--           rsvpApi
+--           burl
+--           defaultArgs
+--           (not500 <%>
+--             createContainsValidLocation <%>
+--             notLongerThan 100000000 <%>
+--             unauthorizedContainsWWWAuthenticate <%>
+--             mempty)
 
-app :: forall (f :: * -> *). Applicative f => Config -> f Application
-app cfg = pure $ serve rsvpApi (rsvpServer cfg)
+-- app :: forall (f :: * -> *). Applicative f => Config -> f Application
+-- app cfg = pure $ serve rsvpApi (rsvpServer cfg)
+
+mockServer :: IO Application
+mockServer = pure $ serve rsvpApi $ mock rsvpApi Proxy
 
 apiSpec :: Config -> Spec
-apiSpec cfg = with (setupTest cfg >> app cfg) $ do
+apiSpec cfg = with mockServer $ do
   it "paginates" $
     get "/events?page=1&per_page=1" `shouldRespondWith` 200
 

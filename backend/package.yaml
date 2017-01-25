@@ -7,7 +7,7 @@ license: Apache
 github: tippenein/rsvp
 category: Web
 
-ghc-options: -Wall -Werror
+ghc-options: -Wall
 default-extensions:
   - NoImplicitPrelude
   - OverloadedStrings
@@ -78,6 +78,7 @@ tests:
       - quickcheck-instances
       - servant-quickcheck
       - servant-server
+      - servant-mock
       - persistent
       - wai-extra
       - wai

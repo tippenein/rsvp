@@ -20,6 +20,7 @@ import           Data.Aeson.Types
 import qualified Data.ByteString.Base64 as B64
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
+-- import           Data.Time.Clock (UTCTime)
 import           Database.Persist
 import           Database.Persist.Sql (fromSqlKey, SqlBackend)
 import           Database.Persist.TH ( mkMigrate, mkPersist, persistLowerCase
@@ -31,27 +32,27 @@ import           Protolude
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 User sql=users
-    name Text
-    email Text
-    deriving Eq Show
+  name Text
+  email Text
+  deriving Eq Show
 
 Rsvp sql=rsvps
-    event_id EventId
-    name Text
-    contact Text
-    deriving Eq Show
+  event_id EventId
+  name Text
+  contact Text
+  deriving Eq Show
 
 EventRsvps sql=event_rsvps
-    event_id EventId
-    rsvp_id RsvpId
-    deriving Eq Show
+  event_id EventId
+  rsvp_id RsvpId
+  deriving Eq Show
 
 Event sql=events
-    creator_id UserId
-    name Text
-    contact Text
-    image ByteString Maybe
-    deriving Eq Show
+  creator_id UserId
+  name Text
+  contact Text
+  image ByteString Maybe
+  deriving Eq Show
 |]
 
 $(deriveJSON defaultOptions ''User)
@@ -72,16 +73,21 @@ decodeFromText t = case B64.decode $ T.encodeUtf8 t of
 
 -- $(deriveJSON defaultOptions ''Event)
 instance ToJSON Event where
-  toJSON (Event c name contact image) = object [ "creator_id" .= toJSON c
-                                               , "name" .= toJSON name
-                                               , "contact" .= toJSON contact
-                                               , "image" .= fmap encodeToText image
-                                               ]
+  toJSON (Event c name contact image)
+    = object [ "creator_id" .= toJSON c
+             , "name" .= toJSON name
+             , "contact" .= toJSON contact
+             , "image" .= fmap encodeToText image
+             -- , "created_at" .= created_at
+             -- , "updated_at" .= updated_at
+             ]
 instance FromJSON Event where
   parseJSON (Object v) = Event <$> v .: "creator_id"
                                <*> v .: "name"
                                <*> v .: "contact"
                                <*> ((v .: "image") >>= pure . decodeFromText)
+                               -- <*> v .: "created_at"
+                               -- <*> v .: "updated_at"
   parseJSON x = typeMismatch "Event" x
 
 eitherToMaybe :: Either a b -> Maybe b

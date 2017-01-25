@@ -22,7 +22,7 @@ library
   hs-source-dirs:
       src
   default-extensions: NoImplicitPrelude OverloadedStrings RecordWildCards
-  ghc-options: -Wall -Werror
+  ghc-options: -Wall
   build-depends:
       base >= 4.7 && < 5
     , protolude
@@ -61,6 +61,7 @@ library
       Rsvp.API
       Rsvp.API.Internal
       Rsvp.Server
+      Rsvp.Server.Cli
       Rsvp.Server.Config
       Rsvp.Server.Handlers
       Rsvp.Server.Instrument
@@ -73,7 +74,7 @@ executable rsvp
   hs-source-dirs:
       cmd
   default-extensions: NoImplicitPrelude OverloadedStrings RecordWildCards
-  ghc-options: -Wall -Werror
+  ghc-options: -Wall
   build-depends:
       base >= 4.7 && < 5
     , protolude
@@ -87,19 +88,29 @@ test-suite rsvp-api-tests
   hs-source-dirs:
       tests
   default-extensions: NoImplicitPrelude OverloadedStrings RecordWildCards
-  ghc-options: -Wall -Werror
+  ghc-options: -Wall
   build-depends:
       base >= 4.7 && < 5
     , protolude
     , shared
     , backend
+    , aeson
+    , http-types
     , logging-effect
     , base64-bytestring
     , bytestring
+    , http-types
+    , hspec
+    , hspec-wai-json
+    , hspec-wai
     , QuickCheck
     , quickcheck-instances
     , servant-quickcheck
+    , servant-server
+    , servant-mock
     , persistent
+    , wai-extra
+    , wai
     , tasty
     , tasty-hspec
     , tasty-quickcheck

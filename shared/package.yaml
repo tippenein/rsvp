@@ -27,6 +27,7 @@ library:
     - bytestring
     - hashable
     - cereal
+    - servant-auth-token-api
     - binary
     - persistent
     - persistent-template
