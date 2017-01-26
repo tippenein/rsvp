@@ -1,5 +1,6 @@
-.PHONY: check clean docs format image lint
+.PHONY: check clean docs format image lint front
 
+FRONTEND_DIR = frontend
 BUILD_IMAGE = fpco/stack-build:lts-7.3
 IMAGE_NAME := rsvp
 IMAGE_TAG := $(shell ./scripts/image-tag)
@@ -21,7 +22,16 @@ docs:
 lint:
 	hlint -q .
 
+front:
+	$(MAKE) -C $(FRONTEND_DIR)
+
+serve:
+	$(MAKE) -C $(FRONTEND_DIR)
+	stack build
+	stack exec rsvp -- --port 8081
+
 image:
+	front
 	stack --docker build
 	./scripts/build-image \
 		$(BUILD_IMAGE) \

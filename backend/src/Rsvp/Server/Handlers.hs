@@ -112,6 +112,7 @@ events mname page per_page =
       logInfo (text $ "showing matches to: " <> show name)
       es <- runDb $ select $ from $ \events' -> do
         where_ (events' ^. EventName `like` (%) ++. val name ++. (%))
+        orderBy [asc (events' ^. EventName)]
         pure events'
       pure (PaginatedResponse 1 1 es)
 

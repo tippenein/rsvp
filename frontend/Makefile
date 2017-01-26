@@ -1,4 +1,4 @@
-all: build dev
+all: ship
 
 dev:
 	npm run watch:all
