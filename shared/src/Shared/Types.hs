@@ -1,15 +1,10 @@
 {-# LANGUAGE DeriveGeneric              #-}
-{-# LANGUAGE EmptyDataDecls             #-}
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE FlexibleInstances          #-}
-{-# LANGUAGE GADTs                      #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE MultiParamTypeClasses      #-}
 {-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE QuasiQuotes                #-}
 {-# LANGUAGE RecordWildCards            #-}
 {-# LANGUAGE TemplateHaskell            #-}
-{-# LANGUAGE TypeFamilies               #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Shared.Types where
@@ -20,50 +15,18 @@ import           Data.Aeson.Types
 import qualified Data.ByteString.Base64 as B64
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
-import           Data.Time.Clock (UTCTime)
 import           Database.Persist
 import           Database.Persist.Sql (fromSqlKey, SqlBackend)
-import           Database.Persist.TH ( mkMigrate, mkPersist, persistLowerCase
-                                     , share, sqlSettings
-                                     )
 import qualified Prelude
 
+import qualified Shared.Models as Model
 import           Protolude
 
-share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
-User sql=users
-  name Text
-  email Text
-  deriving Eq Show
+$(deriveJSON defaultOptions ''Model.User)
+$(deriveJSON defaultOptions ''Model.Rsvp)
+$(deriveJSON defaultOptions ''Model.EventRsvps)
 
-Rsvp sql=rsvps
-  event_id EventId
-  name Text
-  contact Text
-  deriving Eq Show
-
-EventRsvps sql=event_rsvps
-  event_id EventId
-  rsvp_id RsvpId
-  deriving Eq Show
-
-Event sql=events
-  creator_id UserId
-  name Text
-  contact Text
-  timeStart UTCTime Maybe
-  timeEnd UTCTime Maybe
-  image ByteString Maybe
-  deriving Eq Show
-|]
-
-$(deriveJSON defaultOptions ''User)
-$(deriveJSON defaultOptions ''Rsvp)
-$(deriveJSON defaultOptions ''EventRsvps)
-
-type RsvpEvent = Event
 type DbKey = Int64
-
 
 encodeToText :: ByteString -> Text
 encodeToText = T.decodeUtf8 . B64.encode
@@ -74,8 +37,8 @@ decodeFromText t = case B64.decode $ T.encodeUtf8 t of
   Right bs -> pure bs
 
 -- $(deriveJSON defaultOptions ''Event)
-instance ToJSON Event where
-  toJSON (Event c name contact s e image)
+instance ToJSON Model.Event where
+  toJSON (Model.Event c name contact s e image)
     = object [ "creator_id" .= toJSON c
              , "name" .= toJSON name
              , "contact" .= toJSON contact
@@ -83,8 +46,8 @@ instance ToJSON Event where
              , "end_time" .= e
              , "image" .= fmap encodeToText image
              ]
-instance FromJSON Event where
-  parseJSON (Object v) = Event <$> v .: "creator_id"
+instance FromJSON Model.Event where
+  parseJSON (Object v) = Model.Event <$> v .: "creator_id"
                                <*> v .: "name"
                                <*> v .: "contact"
                                <*> v .:? "start_time"
@@ -127,27 +90,16 @@ data PaginatedResponse a = PaginatedResponse
 instance (FromJSON a, PersistEntity a) => FromJSON (PaginatedResponse a)
 instance (ToJSON a, PersistEntity a) => ToJSON (PaginatedResponse a)
 -- Example
-type EventsResponse = PaginatedResponse Event
-type UsersResponse = PaginatedResponse User
-type RsvpsResponse = PaginatedResponse Rsvp
+type EventsResponse = PaginatedResponse Model.Event
+type UsersResponse = PaginatedResponse Model.User
+type RsvpsResponse = PaginatedResponse Model.Rsvp
 
 newtype EventCreateResponse =
-  EventCreateResponse (CreateResponse Event)
+  EventCreateResponse (CreateResponse Model.Event)
   deriving (Eq, Show, Generic)
 
 instance FromJSON EventCreateResponse
 instance ToJSON EventCreateResponse
-
--- instance (ToJSON a, PersistEntity a, FromJSON a) => ToJSON (PaginatedResponse a) where
---   toJSON (PaginatedResponse page per_page ls) = object [ "page" .= toJSON page
---                                                        , "per_page" .= toJSON per_page
---                                                        , "content" .= toJSON ls ]
-
--- instance (FromJSON a, PersistEntity a, ToJSON a) => FromJSON (PaginatedResponse a) where
---   parseJSON (Object v) = PaginatedResponse <$> v .: "page"
---                                            <*> v .: "per_page"
---                                            <*> v .: "content"
---   parseJSON x = typeMismatch "List Response" x
 
 instance (ToJSON a) => ToJSON (CreateResponse a) where
   toJSON (CreateResponse msg db e) = object [ "content" .= toJSON e

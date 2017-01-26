@@ -22,10 +22,11 @@ import qualified Servant.Server.Auth.Token as Auth
 import           Text.PrettyPrint.Leijen.Text (Doc, Pretty, text)
 
 import           Rsvp.API
-import           Shared.Types
 import qualified Rsvp.Server.Config as Config
 import qualified Rsvp.Server.Logging as Log
 import           Rsvp.Server.Models
+import qualified Shared.Models as Model
+import           Shared.Types
 
 files :: Application
 files = serveDirectory "public"
@@ -37,6 +38,7 @@ rsvpServer config = enter (toHandler config) handlers
       pure RootPage :<|>
       users :<|>
       rsvps :<|>
+      createRsvp :<|>
       getEvent :<|>
       getEventImage :<|>
       events :<|>
@@ -52,6 +54,7 @@ server config = enter (toHandler config) handlers
       pure RootPage :<|>
       users :<|>
       rsvps :<|>
+      createRsvp :<|>
       getEvent :<|>
       getEventImage :<|>
       events :<|>
@@ -77,12 +80,12 @@ convertToHandler
   -> ExceptT ServantErr IO a
 convertToHandler cfg = ExceptT . Log.withLogging (Config.logLevel cfg) . runExceptT . flip runReaderT cfg
 
-users :: PaginationParams (Handler Doc (PaginatedResponse User))
+users :: PaginationParams (Handler Doc (PaginatedResponse Model.User))
 users page per_page = do
   us <- runDb $ selectList [] (paginationParams page per_page)
   pure (PaginatedResponse 1 1 us)
 
-getEvent :: DbKey -> Handler Doc Event
+getEvent :: DbKey -> Handler Doc Model.Event
 getEvent = selectById
 
 getEventImage :: DbKey -> Handler Doc ByteString
@@ -90,19 +93,25 @@ getEventImage id = do
   record <- runDb $ get (toSqlKey id)
   case record of
     Nothing -> throwError err404
-    Just a -> pure $ fromMaybe "" $ eventImage a
+    Just a -> pure $ fromMaybe "" $ Model.eventImage a
 
-createEvent :: Event -> Handler Doc EventCreateResponse
-createEvent event = do
-  putText $ show event
-  _event_id <- runDb $ insert event
-  logInfo (text $ "created new event " <> show event)
-  let rsp = CreateResponse { _message = Success "successfully created event"
-                           , _db_id = fromSqlKey _event_id
-                           , _posted_content = event }
-  pure $ EventCreateResponse rsp
+createRsvp :: Model.Rsvp -> Handler Doc (CreateResponse Model.Rsvp)
+createRsvp = createResource
 
-events :: Maybe Text -> PaginationParams (Handler Doc (PaginatedResponse Event))
+createEvent :: Model.Event -> Handler Doc (CreateResponse Model.Event)
+createEvent = createResource
+
+createResource :: (ToBackendKey SqlBackend a, Show a) => a -> Handler Doc (CreateResponse a)
+createResource resource = do
+  putText $ show resource
+  _resource_id <- runDb $ insert resource
+  logInfo (text $ "created new resource " <> show resource)
+  let rsp = CreateResponse { _message = Success "successfully created resource"
+                           , _db_id = fromSqlKey _resource_id
+                           , _posted_content = resource }
+  pure rsp
+
+events :: Maybe Text -> PaginationParams (Handler Doc (PaginatedResponse Model.Event))
 events mname page per_page =
   case mname of
     Nothing -> do
@@ -111,12 +120,12 @@ events mname page per_page =
     Just name -> do
       logInfo (text $ "showing matches to: " <> show name)
       es <- runDb $ select $ from $ \events' -> do
-        where_ (events' ^. EventName `like` (%) ++. val name ++. (%))
-        orderBy [asc (events' ^. EventName)]
+        where_ (events' ^. Model.EventName `like` (%) ++. val name ++. (%))
+        orderBy [asc (events' ^. Model.EventTimeStart)]
         pure events'
       pure (PaginatedResponse 1 1 es)
 
-rsvps :: PaginationParams (Handler Doc (PaginatedResponse Rsvp))
+rsvps :: PaginationParams (Handler Doc (PaginatedResponse Model.Rsvp))
 rsvps page per_page = do
   rs <- runDb $ selectList [] (paginationParams page per_page)
   pure (PaginatedResponse 1 1 rs)

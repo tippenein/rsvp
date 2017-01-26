@@ -14,7 +14,8 @@ import           Reflex.Dom
 import           Common
 import qualified Component
 import           Request
-import           Shared.Types hiding (Event)
+import           Shared.Types
+import qualified Shared.Models as Model
 import qualified Widget
 
 import           Protolude hiding (div, (&), ByteString)
@@ -25,15 +26,15 @@ data Action
   | Query Text
   | SelectEvent DbKey
   | NewEvent
-  | NewUser User
+  | NewUser Model.User
   | CloseStatus
   | ToggleEventForm
-  | EventsPayload (PaginatedResponse RsvpEvent)
+  | EventsPayload (PaginatedResponse Model.Event)
   | CreateEventPayload EventCreateResponse
 
 data Model
   = Model
-  { _events :: Map DbKey RsvpEvent
+  { _events :: Map DbKey Model.Event
   , _query :: Text
   , _status :: Maybe Status
   , _show_event_form :: Bool

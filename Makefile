@@ -25,6 +25,11 @@ lint:
 front:
 	$(MAKE) -C $(FRONTEND_DIR)
 
+dev:
+	$(MAKE) -C $(FRONTEND_DIR) build
+	stack build
+	stack exec rsvp -- --port 8081
+
 serve:
 	$(MAKE) -C $(FRONTEND_DIR)
 	stack build

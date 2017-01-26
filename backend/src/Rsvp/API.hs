@@ -15,6 +15,7 @@ import           Servant.API
 import qualified Servant.API.Auth.Token as Auth
 
 import           Shared.Types
+import qualified Shared.Models as Model
 import           Rsvp.API.Internal (HTML, SelectById)
 
 type Paginate c cts a =
@@ -26,26 +27,32 @@ type API = RsvpAPI :<|> Auth.AuthAPI :<|> Raw
 
 type RsvpAPI =
   Get '[HTML] RootPage :<|>
-  "users" :> Paginate Get '[JSON] User :<|>
-  "rsvps" :> Paginate Get '[JSON] Rsvp :<|>
+  "users" :> Paginate Get '[JSON] Model.User :<|>
+  "rsvps" :> Paginate Get '[JSON] Model.Rsvp :<|>
+  CreateRsvp :<|>
   GetEvent :<|>
   GetEventImage :<|>
   ListEvents :<|>
   CreateEvent
 
 type GetEvent =
-  "events" :> SelectById "id" Event
+  "events" :> SelectById "id" Model.Event
 
 type GetEventImage =
   "events" :> Capture "id" DbKey :> "image" :> Get '[OctetStream] ByteString
 
 type ListEvents =
-  "events" :> QueryParam "name" Text :> Paginate Get '[JSON] Event
+  "events" :> QueryParam "name" Text :> Paginate Get '[JSON] Model.Event
 
 type CreateEvent =
   "events"
-  :> ReqBody '[JSON] Event
-  :> Post '[JSON] EventCreateResponse
+  :> ReqBody '[JSON] Model.Event
+  :> Post '[JSON] (CreateResponse Model.Event)
+
+type CreateRsvp =
+  "rsvps"
+  :> ReqBody '[JSON] Model.Rsvp
+  :> Post '[JSON] (CreateResponse Model.Rsvp)
 
 
 rsvpApi :: Proxy RsvpAPI

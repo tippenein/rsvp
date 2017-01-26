@@ -16,15 +16,16 @@ import           Reflex.Dom
 ------------------------------------
 import           Common
 import qualified Shared.Types as Shared
-import qualified Widget
 import           Shared.Types hiding (Event)
+import qualified Widget
+import qualified Shared.Models as Model
 import           Request
 
 import           Protolude hiding (div, (&), ByteString, log)
 import           Prelude ()
 ------------------------------------
 
-eventForm :: MonadWidget t m => Dynamic t Bool -> m (Event t EventCreateResponse, Dynamic t RsvpEvent, Event t (), Event t ())
+eventForm :: MonadWidget t m => Dynamic t Bool -> m (Event t EventCreateResponse, Dynamic t Model.Event, Event t (), Event t ())
 eventForm visible = do
   let attrs' = fmap (`Common.monoidGuard` blockDisplay ) visible
   let attrs = zipDynWith Map.union attrs' (constDyn noDisplay)
@@ -36,7 +37,7 @@ eventForm visible = do
     let eventCreateResponse :: Event t EventCreateResponse = fmapMaybe decodeXhrResponse createRsp
     pure (eventCreateResponse, eventSubmitData, submitEvent, cancelEvent)
 
-mkEventForm :: MonadWidget t m => m (Dynamic t RsvpEvent, Event t (), Event t ())
+mkEventForm :: MonadWidget t m => m (Dynamic t Model.Event, Event t (), Event t ())
 mkEventForm = do
   let attrs = mconcat ["class" =: "form event-form"
                       , "id" =: "event-form"
@@ -55,11 +56,11 @@ mkEventForm = do
     submitButton <- btnClass "submit" "btn btn-primary"
     pure (submitButton, cancelButton, nameDyn, contactDyn, fileDyn, timeStart, timeEnd)
 
-  let e = Shared.Event (toSqlKey 1) <$> nameDyn <*> contactDyn <*> timeStart <*> timeEnd <*> fileDyn
+  let e = Model.Event (toSqlKey 1) <$> nameDyn <*> contactDyn <*> timeStart <*> timeEnd <*> fileDyn
   pure (e, submitEvent, cancelEvent)
 
 eventListing :: MonadWidget t m
-  => Dynamic t (Map DbKey RsvpEvent)
+  => Dynamic t (Map DbKey Model.Event)
   -> Dynamic t (Maybe DbKey)
   -> m (Event t DbKey)
 eventListing eventMap selectedEvent = elClass "div" "row event-listing" $
@@ -70,27 +71,25 @@ eventListing eventMap selectedEvent = elClass "div" "row event-listing" $
 eventEl :: (MonadWidget t m)
    => Dynamic t Bool
    -> DbKey
-   -> Dynamic t RsvpEvent
+   -> Dynamic t Model.Event
    -> m (El t)
 eventEl sel db_key rsvp_event = do
   let commonAttrs = constDyn $ "class" =: "panel panel-default event-wrap"
   let attrs = fmap (`Common.monoidGuard` selectedStyle) sel
   (e,_) <- elDynAttr' "div" (zipDynWith classMerge attrs commonAttrs) $ do
-    elClass "div" "panel-heading" $ dynText $ fmap eventName rsvp_event
+    elClass "div" "panel-heading" $ dynText $ fmap Model.eventName rsvp_event
     elClass "div" "panel-body" $ do
-      dynText $ fmap eventContact rsvp_event
+      dynText $ fmap Model.eventContact rsvp_event
       br
       text "start time"
-      dynText $ fmap (timeF . eventTimeStart) rsvp_event
+      dynText $ fmap (timeF . Model.eventTimeStart) rsvp_event
       br
       text "end time"
-      dynText $ fmap (timeF . eventTimeEnd) rsvp_event
+      dynText $ fmap (timeF . Model.eventTimeEnd) rsvp_event
       br
       elClass "div" "img-wrapper" $ imgBinEl db_key
   pure e
 
-br :: MonadWidget t m => m ()
-br = el "br" blank
 timeF :: Maybe UTCTime -> Text
 timeF t = case t of
   Just t' -> T.pack $ formatTime defaultTimeLocale "%M %t" t'
@@ -163,8 +162,8 @@ eventImageAttrs conf =
             , "width" =: show w
             , "height" =: show h ]
 
-imgSrcFrom :: RsvpEvent -> Maybe Text
-imgSrcFrom rsvp_event = case eventImage rsvp_event of
+imgSrcFrom :: Model.Event -> Maybe Text
+imgSrcFrom rsvp_event = case Model.eventImage rsvp_event of
   Nothing -> Nothing
   Just i -> Just $ "data:image/jpg;base64," <> encodeToText i
 
@@ -176,3 +175,6 @@ noDisplay = "style" =: "display: none"
 
 blockDisplay :: Map Text Text
 blockDisplay = "style" =: "display: block"
+
+br :: MonadWidget t m => m ()
+br = el "br" blank

@@ -5,7 +5,7 @@ module Rsvp.Server.Models where
 import           Control.Monad.Reader
 import qualified Database.Persist.Sql as Sql
 import           Rsvp.Server.Config
-import           Shared.Types (migrateAll)
+import           Shared.Models (migrateAll)
 import qualified Servant.Server.Auth.Token as Auth
 
 import           Protolude
