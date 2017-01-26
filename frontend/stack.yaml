@@ -5,9 +5,11 @@ packages:
 - location:
     git: git@github.com:reflex-frp/reflex
     commit: 91299fce0bb2caddfba35af6608df57dd31e3690
+  extra-dep: true
 - location:
     git: git@github.com:reflex-frp/reflex-dom
     commit: 66b6d35773fcb337ab38ebce02c4b23baeae721e
+  extra-dep: true
 
 extra-deps:
   - aeson-injector-1.0.6.0

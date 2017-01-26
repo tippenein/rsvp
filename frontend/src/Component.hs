@@ -9,6 +9,8 @@ module Component where
 import           Data.Default
 import qualified Data.Map as Map
 import qualified Data.Text as T
+import           Data.Time.Clock (UTCTime)
+import           Data.Time (formatTime, defaultTimeLocale)
 import           Database.Persist.Sql (toSqlKey)
 import           Reflex.Dom
 ------------------------------------
@@ -41,24 +43,26 @@ mkEventForm = do
                       , "action" =: "/events"
                       , "method" =: "post"
                       ]
-  (submitEvent, cancelEvent, nameDyn, contactDyn, fileDyn) <- elAttr "form" attrs $ do
+  (submitEvent, cancelEvent, nameDyn, contactDyn, fileDyn, timeStart, timeEnd) <- elAttr "form" attrs $ do
     nameDyn <- Widget.formGroup "text" "eventName" "Event Name"
     contactDyn <- Widget.formGroup "text" "contactInfo" "Contact Info"
-    fileEvent <- Widget.bootstrapFileInput "Event Logo"
+    timeStart <- Widget.datePicker
+    timeEnd <- Widget.datePicker
+    fileEvent <- div "row" $ Widget.bootstrapFileInput "Event Logo"
     fileDyn <- holdDyn Nothing (Just <$> fileEvent)
 
     cancelButton <- btn "cancel"
     submitButton <- btnClass "submit" "btn btn-primary"
-    pure (submitButton, cancelButton, nameDyn, contactDyn, fileDyn)
+    pure (submitButton, cancelButton, nameDyn, contactDyn, fileDyn, timeStart, timeEnd)
 
-  let e = Shared.Event (toSqlKey 1) <$> nameDyn <*> contactDyn <*> fileDyn
+  let e = Shared.Event (toSqlKey 1) <$> nameDyn <*> contactDyn <*> timeStart <*> timeEnd <*> fileDyn
   pure (e, submitEvent, cancelEvent)
 
 eventListing :: MonadWidget t m
   => Dynamic t (Map DbKey RsvpEvent)
   -> Dynamic t (Maybe DbKey)
   -> m (Event t DbKey)
-eventListing eventMap selectedEvent = elClass "div" "row event-listing" $ do
+eventListing eventMap selectedEvent = elClass "div" "row event-listing" $
   Widget.selectableListWithKey selectedEvent eventMap $ \sel db_key rsvp_event -> do
     e <- eventEl sel db_key rsvp_event
     pure $ db_key <$ domEvent Click e
@@ -73,9 +77,24 @@ eventEl sel db_key rsvp_event = do
   let attrs = fmap (`Common.monoidGuard` selectedStyle) sel
   (e,_) <- elDynAttr' "div" (zipDynWith classMerge attrs commonAttrs) $ do
     elClass "div" "panel-heading" $ dynText $ fmap eventName rsvp_event
-    elClass "div" "panel-body" $ dynText $ fmap eventContact rsvp_event
-    elClass "div" "img-wrapper" $ imgBinEl db_key
+    elClass "div" "panel-body" $ do
+      dynText $ fmap eventContact rsvp_event
+      br
+      text "start time"
+      dynText $ fmap (timeF . eventTimeStart) rsvp_event
+      br
+      text "end time"
+      dynText $ fmap (timeF . eventTimeEnd) rsvp_event
+      br
+      elClass "div" "img-wrapper" $ imgBinEl db_key
   pure e
+
+br :: MonadWidget t m => m ()
+br = el "br" blank
+timeF :: Maybe UTCTime -> Text
+timeF t = case t of
+  Just t' -> T.pack $ formatTime defaultTimeLocale "%M %t" t'
+  Nothing -> "TBD"
 
 imgBinEl :: (MonadWidget t m) => DbKey -> m ()
 imgBinEl db_key = do

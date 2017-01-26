@@ -83,15 +83,14 @@ maybeButton enabled label = do
     pure $ domEvent Click b
 
 datePicker :: MonadWidget t m
-           => Dynamic t Bool -- ^ Widget enabled?
-           -> m (Dynamic t (Maybe UTCTime))
-datePicker enabled = do
-    rec raw <- textInput $ def & textInputConfig_attributes .~ attrs
-        attrs <- dynCombine date enabled $ \d e ->
-            monoidGuard (isNothing d) ("style" =: "color: red") <>
-            monoidGuard (not e) ("disabled" =: "disabled")
-        let date = fmap (parseTimeM True defaultTimeLocale "%F") $ T.unpack <$> _textInput_value raw
-    return date
+           => m (Dynamic t (Maybe UTCTime))
+datePicker = do
+  rec raw <- textInput $ def & textInputConfig_attributes .~ attrs
+      attrs <- dynCombine date (constDyn True)$ \d e ->
+          monoidGuard (isNothing d) ("style" =: "color: red") <>
+          monoidGuard (not e) ("disabled" =: "disabled")
+      let date = fmap (parseTimeM True defaultTimeLocale "%F") $ T.unpack <$> _textInput_value raw
+  return date
 
 selectableList :: (MonadWidget t m, Ord k)
                => Dynamic t (Maybe k)

@@ -20,7 +20,7 @@ import           Data.Aeson.Types
 import qualified Data.ByteString.Base64 as B64
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
--- import           Data.Time.Clock (UTCTime)
+import           Data.Time.Clock (UTCTime)
 import           Database.Persist
 import           Database.Persist.Sql (fromSqlKey, SqlBackend)
 import           Database.Persist.TH ( mkMigrate, mkPersist, persistLowerCase
@@ -51,6 +51,8 @@ Event sql=events
   creator_id UserId
   name Text
   contact Text
+  timeStart UTCTime Maybe
+  timeEnd UTCTime Maybe
   image ByteString Maybe
   deriving Eq Show
 |]
@@ -73,21 +75,21 @@ decodeFromText t = case B64.decode $ T.encodeUtf8 t of
 
 -- $(deriveJSON defaultOptions ''Event)
 instance ToJSON Event where
-  toJSON (Event c name contact image)
+  toJSON (Event c name contact s e image)
     = object [ "creator_id" .= toJSON c
              , "name" .= toJSON name
              , "contact" .= toJSON contact
+             , "start_time" .= s
+             , "end_time" .= e
              , "image" .= fmap encodeToText image
-             -- , "created_at" .= created_at
-             -- , "updated_at" .= updated_at
              ]
 instance FromJSON Event where
   parseJSON (Object v) = Event <$> v .: "creator_id"
                                <*> v .: "name"
                                <*> v .: "contact"
+                               <*> v .:? "start_time"
+                               <*> v .:? "end_time"
                                <*> ((v .: "image") >>= pure . decodeFromText)
-                               -- <*> v .: "created_at"
-                               -- <*> v .: "updated_at"
   parseJSON x = typeMismatch "Event" x
 
 eitherToMaybe :: Either a b -> Maybe b
