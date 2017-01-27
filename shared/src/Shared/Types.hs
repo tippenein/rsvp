@@ -31,10 +31,12 @@ type DbKey = Int64
 encodeToText :: ByteString -> Text
 encodeToText = T.decodeUtf8 . B64.encode
 
-decodeFromText :: (Monad m) => Text -> m ByteString
-decodeFromText t = case B64.decode $ T.encodeUtf8 t of
-  Left a -> Prelude.error a
-  Right bs -> pure bs
+decodeFromText :: (Monad m) => Maybe Text -> m (Maybe ByteString)
+decodeFromText mt = case mt of
+  Nothing -> pure Nothing
+  Just t -> case B64.decode $ T.encodeUtf8 t of
+              Left a -> Prelude.error a
+              Right bs -> pure $ Just bs
 
 -- $(deriveJSON defaultOptions ''Event)
 instance ToJSON Model.Event where
@@ -46,13 +48,16 @@ instance ToJSON Model.Event where
              , "end_time" .= e
              , "image" .= fmap encodeToText image
              ]
+
 instance FromJSON Model.Event where
-  parseJSON (Object v) = Model.Event <$> v .: "creator_id"
-                               <*> v .: "name"
-                               <*> v .: "contact"
-                               <*> v .:? "start_time"
-                               <*> v .:? "end_time"
-                               <*> ((v .: "image") >>= pure . decodeFromText)
+  parseJSON (Object v) = do
+    mimage <- v .:? "image"
+    Model.Event <$> v .: "creator_id"
+                <*> v .: "name"
+                <*> v .: "contact"
+                <*> v .:? "start_time"
+                <*> v .:? "end_time"
+                <*> decodeFromText mimage
   parseJSON x = typeMismatch "Event" x
 
 eitherToMaybe :: Either a b -> Maybe b

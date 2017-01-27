@@ -101,16 +101,6 @@ createRsvp = createResource
 createEvent :: Model.Event -> Handler Doc (CreateResponse Model.Event)
 createEvent = createResource
 
-createResource :: (ToBackendKey SqlBackend a, Show a) => a -> Handler Doc (CreateResponse a)
-createResource resource = do
-  putText $ show resource
-  _resource_id <- runDb $ insert resource
-  logInfo (text $ "created new resource " <> show resource)
-  let rsp = CreateResponse { _message = Success "successfully created resource"
-                           , _db_id = fromSqlKey _resource_id
-                           , _posted_content = resource }
-  pure rsp
-
 events :: Maybe Text -> PaginationParams (Handler Doc (PaginatedResponse Model.Event))
 events mname page per_page =
   case mname of
@@ -145,3 +135,13 @@ selectById ident = do
   case result of
     Nothing -> throwError err404
     Just r  -> pure r
+
+createResource :: (ToBackendKey SqlBackend a, Show a) => a -> Handler Doc (CreateResponse a)
+createResource resource = do
+  putText $ show resource
+  _resource_id <- runDb $ insert resource
+  logInfo (text $ "created new resource " <> show resource)
+  let rsp = CreateResponse { _message = Success "successfully created resource"
+                           , _db_id = fromSqlKey _resource_id
+                           , _posted_content = resource }
+  pure rsp

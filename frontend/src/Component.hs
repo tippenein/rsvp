@@ -16,12 +16,12 @@ import           Reflex.Dom
 ------------------------------------
 import           Common
 import qualified Shared.Types as Shared
-import           Shared.Types hiding (Event)
+import           Shared.Types
 import qualified Widget
 import qualified Shared.Models as Model
 import           Request
 
-import           Protolude hiding (div, (&), ByteString, log)
+import           Protolude hiding (div, (&), log)
 import           Prelude ()
 ------------------------------------
 
@@ -87,7 +87,7 @@ eventEl sel db_key rsvp_event = do
       text "end time"
       dynText $ fmap (timeF . Model.eventTimeEnd) rsvp_event
       br
-      elClass "div" "img-wrapper" $ imgBinEl db_key
+      elClass "div" "img-wrapper" $ dyn $ fmap (imgBinEl db_key . Model.eventImage) rsvp_event
   pure e
 
 timeF :: Maybe UTCTime -> Text
@@ -95,10 +95,14 @@ timeF t = case t of
   Just t' -> T.pack $ formatTime defaultTimeLocale "%M %t" t'
   Nothing -> "TBD"
 
-imgBinEl :: (MonadWidget t m) => DbKey -> m ()
-imgBinEl db_key = do
-  let attrs = eventImageAttrs $ def { ei_img_src = Just $ "/events/" <> show db_key <> "/image" }
-  elAttr "img" attrs blank
+imgBinEl :: MonadWidget t m => DbKey -> (Maybe ByteString) -> m ()
+imgBinEl db_key mimage =
+  let attrs = eventImageAttrs $ def { ei_img_src = getSrc mimage }
+  in elAttr "img" attrs blank
+    where
+      getSrc :: Maybe ByteString -> Maybe Text
+      getSrc Nothing = Nothing
+      getSrc (Just _) = Just $ "/events/" <> show db_key <> "/image"
 
 flashStatus :: MonadWidget t m => Dynamic t (Maybe Status) -> m (Event t ())
 flashStatus status = div "errors row" $ do
@@ -161,11 +165,6 @@ eventImageAttrs conf =
     mconcat [ "src" =: src
             , "width" =: show w
             , "height" =: show h ]
-
-imgSrcFrom :: Model.Event -> Maybe Text
-imgSrcFrom rsvp_event = case Model.eventImage rsvp_event of
-  Nothing -> Nothing
-  Just i -> Just $ "data:image/jpg;base64," <> encodeToText i
 
 selectedStyle :: Map Text Text
 selectedStyle = "class" =: "selected"
