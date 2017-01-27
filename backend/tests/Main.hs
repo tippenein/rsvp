@@ -3,7 +3,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE KindSignatures #-}
 
 module Main
   ( main
@@ -33,10 +32,11 @@ import           Test.Tasty (defaultMain, TestTree, testGroup)
 import           Test.Tasty.Hspec -- (Spec, it, testSpec)
 -- import Test.Tasty.QuickCheck as QC
 --------------------------------------------
-import           Rsvp.API (rsvpApi, RootPage)
+import           Rsvp.API (rsvpApi)
 -- import           Rsvp.API.Internal (HTML)
 import           Shared.Types
 import qualified Shared.Types as Types
+import qualified Shared.Models as Model
 import           Rsvp.Server.Models
 import           Rsvp.Server.Config (Config(..), makePool, Environment(Test), mkAuthConfig)
 import           Rsvp.Server.Handlers (rsvpServer)
@@ -52,21 +52,15 @@ tests = do
   let pool = unsafePerformIO $ makePool Test
   let cfg  = Config pool Log.Error (mkAuthConfig pool) env
   liftIO $ setupTest cfg
-  -- specs <- testSpec "servant tests" $ spec cfg
-  apiSpecs <- testSpec "api tests" $ apiSpec cfg
+  specs <- testSpec "servant tests" $ spec cfg
+  -- apiSpecs <- testSpec "api tests" $ apiSpec cfg
   units <- testSpec "unit tests" unitTests
   liftIO $ tearDownTest cfg
-  pure $ testGroup "Rsvp.Backend" [sharedSpec, units, apiSpecs]
+  pure $ testGroup "Rsvp.Backend" [sharedSpec, units, specs]
 
-
-someId :: Gen Int64
-someId = pure 1
 
 instance Arbitrary (BackendKey SqlBackend) where
   arbitrary = SqlBackendKey <$> arbitraryPositiveInt
-
-instance Arbitrary EventCreateResponse where
-  arbitrary = EventCreateResponse <$> arbitrary
 
 instance Arbitrary Status where
   arbitrary = arbitrary :: Gen Types.Status
@@ -74,26 +68,29 @@ instance Arbitrary Status where
 instance (ToBackendKey SqlBackend a, Arbitrary a) => Arbitrary (CreateResponse a) where
   arbitrary = CreateResponse <$> arbitrary <*> arbitraryPositiveInt <*> arbitrary
 
-instance Arbitrary Event where
-  arbitrary = Event <$>
-    (UserKey <$> arbitraryPositiveInt)
+instance Arbitrary Model.Event where
+  arbitrary = Model.Event <$>
+    (Model.UserKey <$> arbitraryPositiveInt)
+    <*> arbitrary
+    <*> arbitrary
     <*> arbitrary
     <*> arbitrary
     <*> arbitrary
 
-instance Arbitrary Rsvp where
-  arbitrary = Rsvp <$> (toKey <$> someId) <*> arbitrary <*> arbitrary
+instance Arbitrary Model.Rsvp where
+  arbitrary = Model.Rsvp
+    <$> (Model.EventKey <$> arbitraryPositiveInt)
+    <*> arbitrary
+    <*> arbitrary
 
-instance Arbitrary User where
-  arbitrary = User <$> arbitrary <*> arbitrary
+instance Arbitrary Model.User where
+  arbitrary = Model.User <$> arbitrary <*> arbitrary
 
 instance (ToBackendKey SqlBackend a, Arbitrary a) => Arbitrary (Entity a) where
   arbitrary = do
     key <- toSqlKey <$> arbitrary
     whatever <- arbitrary
     pure $ Entity key whatever
-
-instance Arbitrary RootPage
 
 instance (ToBackendKey SqlBackend a, Arbitrary a) => Arbitrary (PaginatedResponse a) where
   arbitrary = PaginatedResponse <$> arbitraryPositiveInt <*> arbitraryPositiveInt <*> arbitraryList
@@ -108,20 +105,20 @@ arbitraryList =
 arbitraryPositiveInt :: (Num a, Ord a, Arbitrary a) => Gen a
 arbitraryPositiveInt = arbitrary `suchThat` (> 1)
 
--- spec :: Config -> Spec
--- spec cfg =
---   it "follows best practices" $
---     withServantServer rsvpApi (pure $ rsvpServer cfg) $
---       \burl ->
---         serverSatisfies
---           rsvpApi
---           burl
---           defaultArgs
---           (not500 <%>
---             createContainsValidLocation <%>
---             notLongerThan 100000000 <%>
---             unauthorizedContainsWWWAuthenticate <%>
---             mempty)
+spec :: Config -> Spec
+spec cfg =
+  it "follows best practices" $
+    withServantServer rsvpApi (pure $ rsvpServer cfg) $
+      \burl ->
+        serverSatisfies
+          rsvpApi
+          burl
+          defaultArgs
+          (not500 <%>
+            createContainsValidLocation <%>
+            notLongerThan 100000000 <%>
+            unauthorizedContainsWWWAuthenticate <%>
+            mempty)
 
 -- app :: forall (f :: * -> *). Applicative f => Config -> f Application
 -- app cfg = pure $ serve rsvpApi (rsvpServer cfg)
@@ -135,7 +132,7 @@ apiSpec cfg = with mockServer $ do
     get "/events?page=1&per_page=1" `shouldRespondWith` 200
 
   it "denies bad event with 405" $ do
-    let e = Event (toSqlKey 9001) "new" "something" Nothing
+    let e = Model.Event (toSqlKey 9001) "new" "something" Nothing Nothing Nothing
     postJson "/events" e `shouldRespondWith` 400
 
   it "fetches image from event id" $ do
@@ -143,7 +140,7 @@ apiSpec cfg = with mockServer $ do
     get ("/events/" <> show i <> "/image") `shouldRespondWith` 200
     where
       stuff = do
-        uid <- insert $ User "a" "b"
+        uid <- insert $ Model.User "a" "b"
         i <- insert $ event_with_image uid
         pure $ fromSqlKey i
 
@@ -161,23 +158,23 @@ setupTest cfg = runSqlPool stuff (getPool cfg)
   where
     stuff = do
       doMigrations
-      uid <- insert $ User "whatever" "whatever@whatever.com"
+      uid <- insert $ Model.User "whatever" "whatever@whatever.com"
       _ <- insert $ event_with_image uid
-      _ <- insert $ Event uid "no image" "something" Nothing
+      _ <- insert $ Model.Event uid "no image" "something" Nothing Nothing Nothing
       pure()
 
 tearDownTest :: Config -> IO ()
 tearDownTest cfg = runSqlPool stuff (getPool cfg)
   where
     stuff = do
-      deleteWhere [EventId >=. toSqlKey 0]
-      deleteWhere [UserId >=. toSqlKey 0]
+      deleteWhere [Model.EventId >=. toSqlKey 0]
+      deleteWhere [Model.UserId >=. toSqlKey 0]
       pure()
 
-event_with_image :: Key User -> Event
+event_with_image :: Key Model.User -> Model.Event
 event_with_image uid =
   let img = unsafePerformIO $ B64.encode <$> ByteString.readFile "tests/fixtures/image.png"
-  in Event uid "with image" "derp" (Just img)
+  in Model.Event uid "with image" "derp" Nothing Nothing (Just img)
 
 unitTests :: Spec
 unitTests =

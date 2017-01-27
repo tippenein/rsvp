@@ -23,10 +23,11 @@ type Paginate c cts a =
   QueryParam "per_page" Int :>
   c cts (PaginatedResponse a)
 
-type API = RsvpAPI :<|> Auth.AuthAPI :<|> Raw
+type API = RsvpAPI :<|> Auth.AuthAPI :<|> Home :<|> Raw
+
+type Home = Get '[HTML] RootPage
 
 type RsvpAPI =
-  Get '[HTML] RootPage :<|>
   "users" :> Paginate Get '[JSON] Model.User :<|>
   "rsvps" :> Paginate Get '[JSON] Model.Rsvp :<|>
   CreateRsvp :<|>

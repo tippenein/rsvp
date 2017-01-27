@@ -35,7 +35,6 @@ rsvpServer :: Config.Config -> Server RsvpAPI
 rsvpServer config = enter (toHandler config) handlers
   where
     handlers =
-      pure RootPage :<|>
       users :<|>
       rsvps :<|>
       createRsvp :<|>
@@ -48,10 +47,10 @@ rsvpServer config = enter (toHandler config) handlers
 server :: Config.Config -> Server API
 server config = enter (toHandler config) handlers
   :<|> Auth.authServer (Config.authConfig config)
+  :<|> pure RootPage
   :<|> files
   where
     handlers =
-      pure RootPage :<|>
       users :<|>
       rsvps :<|>
       createRsvp :<|>
