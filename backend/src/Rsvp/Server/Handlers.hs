@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE GADTs #-}
 
@@ -17,7 +18,7 @@ import           Control.Monad.Reader (ReaderT, runReaderT)
 import           Database.Esqueleto
 import           Database.Persist.Sql (toSqlKey, selectList, SelectOpt(..))
 import           Network.Wai (Application)
-import           Servant (serveDirectory, err404, ServantErr, Server, (:<|>)(..), (:~>)(..), enter)
+import           Servant (serveDirectory, err404, err400, ServantErr, Server, (:<|>)(..), (:~>)(..), enter)
 import qualified Servant.Server.Auth.Token as Auth
 import           Text.PrettyPrint.Leijen.Text (Doc, Pretty, text)
 
@@ -95,10 +96,20 @@ getEventImage id = do
     Just a -> pure $ fromMaybe "" $ Model.eventImage a
 
 createRsvp :: Model.Rsvp -> Handler Doc (CreateResponse Model.Rsvp)
-createRsvp = createResource
+createRsvp rsvp = do
+  e <- runDb $ get $ Model.rsvpEvent_id rsvp
+  case e of
+    Just _ -> createResource rsvp
+    Nothing -> throwError err400
 
+-- createEvent :: Model.Event -> Handler Doc (CreateResponse Model.Event)
+-- createEvent = createResource
 createEvent :: Model.Event -> Handler Doc (CreateResponse Model.Event)
-createEvent = createResource
+createEvent e = do
+  u <- runDb $ get $ Model.eventCreator_id e
+  case u of
+    Just _ -> createResource e
+    Nothing -> throwError err400
 
 events :: Maybe Text -> PaginationParams (Handler Doc (PaginatedResponse Model.Event))
 events mname page per_page =

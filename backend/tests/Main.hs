@@ -3,6 +3,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE KindSignatures #-}
 
 module Main
   ( main
@@ -53,10 +54,10 @@ tests = do
   let cfg  = Config pool Log.Error (mkAuthConfig pool) env
   liftIO $ setupTest cfg
   specs <- testSpec "servant tests" $ spec cfg
-  -- apiSpecs <- testSpec "api tests" $ apiSpec cfg
+  apiSpecs <- testSpec "api tests" $ apiSpec cfg
   units <- testSpec "unit tests" unitTests
   liftIO $ tearDownTest cfg
-  pure $ testGroup "Rsvp.Backend" [sharedSpec, units, specs]
+  pure $ testGroup "Rsvp.Backend" [sharedSpec, units, specs, apiSpecs]
 
 
 instance Arbitrary (BackendKey SqlBackend) where
@@ -120,14 +121,14 @@ spec cfg =
             unauthorizedContainsWWWAuthenticate <%>
             mempty)
 
--- app :: forall (f :: * -> *). Applicative f => Config -> f Application
--- app cfg = pure $ serve rsvpApi (rsvpServer cfg)
+app :: forall (f :: * -> *). Applicative f => Config -> f Application
+app cfg = pure $ serve rsvpApi (rsvpServer cfg)
 
-mockServer :: IO Application
-mockServer = pure $ serve rsvpApi $ mock rsvpApi Proxy
+-- mockServer :: IO Application
+-- mockServer = pure $ serve rsvpApi $ mock rsvpApi Proxy
 
 apiSpec :: Config -> Spec
-apiSpec cfg = with mockServer $ do
+apiSpec cfg = with (setupTest cfg >> app cfg) $ do
   it "paginates" $
     get "/events?page=1&per_page=1" `shouldRespondWith` 200
 
