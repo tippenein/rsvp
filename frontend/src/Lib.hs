@@ -26,9 +26,11 @@ data Action
   | Query Text
   | SelectEvent DbKey
   | NewEvent
+  | NewRsvp
   | NewUser Model.User
   | CloseStatus
   | ToggleEventForm
+  | ToggleRsvpForm
   | EventsPayload (PaginatedResponse Model.Event)
   | CreateEventPayload EventCreateResponse
 
@@ -38,6 +40,7 @@ data Model
   , _query :: Text
   , _status :: Maybe Status
   , _show_event_form :: Bool
+  , _show_rsvp_form :: Bool
   , _selected :: Maybe DbKey
   } deriving (Show)
 
@@ -48,6 +51,7 @@ initialModel
   , _query = ""
   , _status = Nothing
   , _show_event_form = False
+  , _show_rsvp_form = False
   , _selected = Nothing
   }
 
@@ -58,10 +62,12 @@ update (Query s) m = m { _query = s  }
 update CloseStatus m = m { _status = Nothing }
 update (NewUser _) m = m
 -- | events
+update NewRsvp m = m { _status = pure $ Info "Sending Rsvp" }
 update NewEvent m = m { _status = pure $ Info "creating new event" }
 update (EventsPayload (PaginatedResponse _ _ rsp)) m =
   m { _events = Map.fromList $ fmap entityToTuple rsp }
 update ToggleEventForm m = m { _show_event_form = not $ _show_event_form m }
+update ToggleRsvpForm m = m { _show_rsvp_form = not $ _show_rsvp_form m }
 update (CreateEventPayload (EventCreateResponse rsp)) m =
   m { _status = pure $ _message rsp,
       _events = Map.insert (_db_id rsp) (_posted_content rsp) $ _events m
@@ -87,6 +93,10 @@ view model = div "container" $
   let selectedEvent = fmap _selected model
   Component.eventListing (fmap _events model) selectedEvent >>= \eventSelected -> do
 
+  let showRsvpForm = fmap _show_rsvp_form model
+  Component.rsvpForm showRsvpForm (constDyn 1) >>= \(rsvpCreateResponse, rsvpSubmitEvent, rsvpCancelEvent) -> do
+  performEvent_ $ fmap (\_ -> liftIO $ Widget.reset "rsvp-form") rsvpCreateResponse
+
   pure $ leftmost
       [ EventsPayload <$> eventsResponse
       , SelectEvent <$> eventSelected
@@ -94,6 +104,8 @@ view model = div "container" $
       , CloseStatus <$ closeStatus
       , ToggleEventForm <$ leftmost [newEventClick, cancelEvent]
       , CreateEventPayload <$> eventCreateResponse
+      , NewRsvp <$ rsvpSubmitEvent
+      , ToggleRsvpForm <$ leftmost [rsvpCancelEvent, fmap (const ()) eventSelected]
       , requestEvents
       ]
 

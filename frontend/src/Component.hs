@@ -37,6 +37,37 @@ eventForm visible = do
     let eventCreateResponse :: Event t EventCreateResponse = fmapMaybe decodeXhrResponse createRsp
     pure (eventCreateResponse, eventSubmitData, submitEvent, cancelEvent)
 
+rsvpForm :: MonadWidget t m => Dynamic t Bool -> Dynamic t DbKey -> m (Event t (CreateResponse Model.Rsvp), Event t (), Event t ())
+rsvpForm visible selectedEvent = do
+  let attrs' = fmap (`Common.monoidGuard` blockDisplay ) visible
+  let attrs = zipDynWith Map.union attrs' (constDyn noDisplay)
+  elDynAttr "div" attrs $ do
+    (submitData, submitEvent, cancelEvent) <- mkRsvpForm selectedEvent
+    let postData = Request.toPostWithEncode (defaultUrl EventsRoute) <$> submitData
+
+    createRsp :: Event t XhrResponse <- performRequestAsync $ attachPromptlyDynWith const postData submitEvent
+    let eventCreateResponse :: Event t (CreateResponse Model.Rsvp) = fmapMaybe decodeXhrResponse createRsp
+    pure (eventCreateResponse, submitEvent, cancelEvent)
+
+mkRsvpForm :: MonadWidget t m => Dynamic t DbKey -> m (Dynamic t Model.Rsvp, Event t (), Event t ())
+mkRsvpForm selected_event = do
+  let attrs = mconcat ["class" =: "form rsvp-form"
+                      , "id" =: "rsvp-form"
+                      , "action" =: "/rsvps"
+                      , "method" =: "post"
+                      ]
+  (submitEvent, cancelEvent, nameDyn, contactDyn) <- elAttr "form" attrs $ do
+    nameDyn <- Widget.formGroup "text" "name" "Name"
+    contactDyn <- Widget.formGroup "text" "contactInfo" "Contact Info"
+
+    cancelButton <- btn "cancel"
+    submitButton <- btnClass "submit" "btn btn-primary"
+    pure (submitButton, cancelButton, nameDyn, contactDyn)
+
+  -- mkRsvp s :: DbKey -> Model.Rsvp
+  let r = Model.Rsvp (toSqlKey 1) <$> nameDyn <*> contactDyn
+  pure (r, submitEvent, cancelEvent)
+
 mkEventForm :: MonadWidget t m => m (Dynamic t Model.Event, Event t (), Event t ())
 mkEventForm = do
   let attrs = mconcat ["class" =: "form event-form"
@@ -81,10 +112,10 @@ eventEl sel db_key rsvp_event = do
     elClass "div" "panel-body" $ do
       dynText $ fmap Model.eventContact rsvp_event
       br
-      text "start time"
+      text "start time: "
       dynText $ fmap (timeF . Model.eventTimeStart) rsvp_event
       br
-      text "end time"
+      text "end time: "
       dynText $ fmap (timeF . Model.eventTimeEnd) rsvp_event
       br
       elClass "div" "img-wrapper" $ dyn $ fmap (imgBinEl db_key . Model.eventImage) rsvp_event
@@ -92,7 +123,7 @@ eventEl sel db_key rsvp_event = do
 
 timeF :: Maybe UTCTime -> Text
 timeF t = case t of
-  Just t' -> T.pack $ formatTime defaultTimeLocale "%M %t" t'
+  Just t' -> T.pack $ formatTime defaultTimeLocale "%A | %b %d" t'
   Nothing -> "TBD"
 
 imgBinEl :: MonadWidget t m => DbKey -> (Maybe ByteString) -> m ()

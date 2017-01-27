@@ -32,6 +32,7 @@ import           Shared.Types
 files :: Application
 files = serveDirectory "public"
 
+-- | rsvp API implementation.
 rsvpServer :: Config.Config -> Server RsvpAPI
 rsvpServer config = enter (toHandler config) handlers
   where
@@ -44,7 +45,7 @@ rsvpServer config = enter (toHandler config) handlers
       events :<|>
       createEvent
 
--- | rsvp API implementation.
+-- | all api's combined. composed Auth, RootPage, Assets and Rsvp json
 server :: Config.Config -> Server API
 server config = enter (toHandler config) handlers
   :<|> Auth.authServer (Config.authConfig config)
@@ -102,8 +103,6 @@ createRsvp rsvp = do
     Just _ -> createResource rsvp
     Nothing -> throwError err400
 
--- createEvent :: Model.Event -> Handler Doc (CreateResponse Model.Event)
--- createEvent = createResource
 createEvent :: Model.Event -> Handler Doc (CreateResponse Model.Event)
 createEvent e = do
   u <- runDb $ get $ Model.eventCreator_id e
