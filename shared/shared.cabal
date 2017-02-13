@@ -1,0 +1,44 @@
+-- This file has been generated from package.yaml by hpack version 0.15.0.
+--
+-- see: https://github.com/sol/hpack
+
+name:           shared
+version:        0.1.0
+synopsis:       rsvp event system
+description:    Please see README.md
+category:       Web
+homepage:       https://github.com/tippenein/rsvp#readme
+bug-reports:    https://github.com/tippenein/rsvp/issues
+maintainer:     tippenein <tippenein@gmail.com>
+license:        Apache
+build-type:     Simple
+cabal-version:  >= 1.10
+
+source-repository head
+  type: git
+  location: https://github.com/tippenein/rsvp
+
+library
+  hs-source-dirs:
+      src
+  default-extensions: NoImplicitPrelude OverloadedStrings RecordWildCards
+  ghc-options: -Wall -Werror
+  build-depends:
+      base >= 4.7 && < 5
+    , protolude
+    , text
+    , aeson
+    , time
+    , base64-bytestring
+    , bytestring
+    , hashable
+    , cereal
+    , binary
+    , persistent
+    , persistent-template
+  exposed-modules:
+      Auth.Client
+      Data.Base64ByteString
+      Shared.Models
+      Shared.Types
+  default-language: Haskell2010

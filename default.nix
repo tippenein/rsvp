@@ -1,4 +1,4 @@
-{ reflex-platform ? import ./reflex-platform {}
+{ reflex-platform ? import ./deps/reflex-platform {}
 , pkgs            ? import <nixpkgs>         {}
 , ghc             ? pkgs.haskell.packages.ghc802
 , ghcjs           ? reflex-platform.ghcjs

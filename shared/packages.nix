@@ -1,6 +1,7 @@
 # { nixpkgs ? import <nixpkgs> {}, compiler ? "802" }:
 { mkDerivation
 , stdenv
+, protolude
 , aeson
 , time
 , base64-bytestring
@@ -12,12 +13,14 @@
 , persistent-template
   }:
 mkDerivation {
-  pname = "server";
+  pname = "shared";
   version = "0.1.0.0";
   src = ./.;
   isLibrary = true;
-  executableHaskellDepends = [
+  # executableHaskellDepends = [
+  buildDepends = [
     aeson
+    protolude
     time
     base64-bytestring
     bytestring

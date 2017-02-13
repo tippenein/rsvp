@@ -2,7 +2,6 @@ public/
 .stack-work
 /bash_completion.sh
 frontend/node_modules
-*.cabal
 dist
 cabal-dev
 *.o
